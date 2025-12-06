@@ -12,12 +12,12 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp(
     options: const FirebaseOptions(
-      apiKey: "AIzaSyBJGl7s9UOqEI8b8rgBjmj_Wj-CaYkwvf8",
-      authDomain: "upstyles-pro.firebaseapp.com",
-      projectId: "upstyles-pro",
-      storageBucket: "upstyles-pro.firebasestorage.app",
-      messagingSenderId: "406281226815",
-      appId: "1:406281226815:web:2c5aa0ab9d6e19d0e9c9d6",
+      apiKey: "AIzaSyDcK7J9zXTTg52W4t-BSEAMvuP2QEZqJ2s",
+      authDomain: "upstyles-admin-pro.firebaseapp.com",
+      projectId: "upstyles-admin-pro",
+      storageBucket: "upstyles-admin-pro.firebasestorage.app",
+      messagingSenderId: "438705648122",
+      appId: "1:438705648122:web:d5e4b0392930ba17faf443",
     ),
   );
 

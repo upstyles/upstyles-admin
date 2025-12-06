@@ -1,5 +1,6 @@
 {
   "ENVIRONMENT": "production",
   "MODERATION_API_BASE_URL": "https://moderation-api--upstyles-pro.us-east4.hosted.app",
-  "FIREBASE_PROJECT_ID": "upstyles-pro"
+  "FIREBASE_PROJECT_ID": "upstyles-admin-pro",
+  "USER_FIREBASE_PROJECT_ID": "upstyles-pro"
 }

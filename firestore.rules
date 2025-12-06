@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated moderator
+    function isModerator() {
+      return request.auth != null 
+        && request.auth.token.moderator == true;
+    }
+    
+    function isAdmin() {
+      return request.auth != null 
+        && request.auth.token.role == 'admin';
+    }
+    
+    // Audit logs - moderators can read, system writes
+    match /audit_logs/{logId} {
+      allow read: if isModerator();
+      allow write: if false; // Only backend can write
+    }
+    
+    // Admin settings - only admins can modify
+    match /admin_settings/{document=**} {
+      allow read: if isModerator();
+      allow write: if isAdmin();
+    }
+    
+    // Moderator profiles
+    match /moderators/{userId} {
+      allow read: if isModerator();
+      allow write: if isAdmin() || request.auth.uid == userId;
+    }
+    
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

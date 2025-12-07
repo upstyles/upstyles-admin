@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'src/screens/auth/login_screen.dart';
 import 'src/screens/dashboard/dashboard_screen.dart';
 import 'src/theme/app_theme.dart';
+import 'src/providers/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,15 +31,19 @@ class UpStylesAdminApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        // Add providers here
-      ],
-      child: MaterialApp.router(
-        title: 'UpStyles Admin',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        routerConfig: _router,
+    return ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp.router(
+            title: 'UpStyles Admin',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
+            routerConfig: _router,
+          );
+        },
       ),
     );
   }

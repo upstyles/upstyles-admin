@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../submissions/explore_submissions_tab.dart';
 import '../analytics/analytics_tab.dart';
@@ -8,6 +9,7 @@ import '../users/users_moderation_tab.dart';
 import '../posts/posts_moderation_tab.dart';
 import '../reports/reports_moderation_tab.dart';
 import '../audit/audit_log_tab.dart';
+import '../../providers/theme_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -48,6 +50,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Text(user?.email ?? 'Admin'),
                 const SizedBox(width: 16),
+                IconButton(
+                  icon: const Icon(Icons.palette_outlined),
+                  onPressed: () => _showThemeDialog(context),
+                  tooltip: 'Theme Settings',
+                ),
+                const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.logout),
                   onPressed: () async {
@@ -109,6 +117,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: _tabs[_selectedIndex],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showThemeDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Theme Settings'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.light_mode),
+              title: const Text('Light Mode'),
+              onTap: () {
+                context.read<ThemeProvider>().setThemeMode(ThemeMode.light);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.dark_mode),
+              title: const Text('Dark Mode'),
+              onTap: () {
+                context.read<ThemeProvider>().setThemeMode(ThemeMode.dark);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings_system_daydream),
+              title: const Text('System Default'),
+              onTap: () {
+                context.read<ThemeProvider>().setThemeMode(ThemeMode.system);
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

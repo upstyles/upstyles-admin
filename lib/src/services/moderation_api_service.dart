@@ -123,6 +123,19 @@ class ModerationApiService {
       throw Exception('Failed to reject: ${response.body}');
     }
   }
+  Future<void> deleteSubmission({
+    required String submissionId,
+  }) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/explore/$submissionId');
+    final headers = await _headers();
+
+    final response = await _http.delete(url, headers: headers);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete submission: ${response.body}');
+    }
+  }
+
 
   // BATCH OPERATIONS
 

@@ -272,6 +272,50 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
   }
 
   // Batch operations
+  Future<void> _deleteSubmission(SubmissionItem submission) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Submission'),
+        content: Text(
+          'Are you sure you want to permanently delete "${submission.title}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _moderationApi.deleteSubmission(
+        submissionId: submission.id,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Submission deleted'), backgroundColor: Colors.red),
+        );
+        _loadSubmissions();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
   Future<void> _batchApprove() async {
     final collectionId = await _showCollectionPicker();
     if (collectionId == null) return;
@@ -713,6 +757,12 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     if (submission.isPending || submission.isFlagged) ...[
+                      IconButton(
+                        onPressed: () => _deleteSubmission(submission),
+                        icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                        tooltip: 'Delete',
+                      ),
+                      const SizedBox(width: 4),
                       TextButton.icon(
                         onPressed: () => _rejectSubmission(submission),
                         icon: const Icon(Icons.close, color: Colors.red),

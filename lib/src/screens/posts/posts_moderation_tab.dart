@@ -14,6 +14,7 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
   List<dynamic> _posts = [];
   bool _loading = true;
   bool _flaggedOnly = false;
+  Set<String> _selectedPosts = {};
 
   @override
   void initState() {
@@ -29,6 +30,7 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
         setState(() {
           _posts = posts;
           _loading = false;
+          _selectedPosts.clear();
         });
       }
     } catch (e) {
@@ -36,6 +38,70 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
         setState(() => _loading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading posts: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _batchHidePosts() async {
+    if (_selectedPosts.isEmpty) return;
+    
+    final reason = await _showReasonDialog('Batch Hide Posts', 'Enter reason for hiding ${_selectedPosts.length} posts:');
+    if (reason == null || reason.isEmpty) return;
+
+    try {
+      await _moderationApi.batchHidePosts(postIds: _selectedPosts.toList(), reason: reason);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${_selectedPosts.length} posts hidden'), backgroundColor: AppTheme.successColor),
+        );
+        _loadPosts();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _batchDeletePosts() async {
+    if (_selectedPosts.isEmpty) return;
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Batch Delete Posts'),
+        content: Text('Permanently delete ${_selectedPosts.length} selected posts? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            child: const Text('DELETE ALL'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _moderationApi.batchDeletePosts(postIds: _selectedPosts.toList());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${_selectedPosts.length} posts deleted'), backgroundColor: AppTheme.errorColor),
+        );
+        _loadPosts();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }
@@ -138,7 +204,35 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
           child: Row(
             children: [
               const Text('Posts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              if (_selectedPosts.isNotEmpty) ...[
+                const SizedBox(width: 16),
+                Text(
+                  '${_selectedPosts.length} selected',
+                  style: const TextStyle(fontSize: 14, color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
+                ),
+              ],
               const Spacer(),
+              if (_selectedPosts.isNotEmpty) ...[
+                ElevatedButton.icon(
+                  onPressed: _batchHidePosts,
+                  icon: const Icon(Icons.visibility_off, size: 18),
+                  label: const Text('Hide Selected'),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.warningColor),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: _batchDeletePosts,
+                  icon: const Icon(Icons.delete, size: 18),
+                  label: const Text('Delete Selected'),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () => setState(() => _selectedPosts.clear()),
+                  child: const Text('Clear'),
+                ),
+                const SizedBox(width: 16),
+              ],
               SegmentedButton<bool>(
                 segments: const [
                   ButtonSegment(value: false, label: Text('All')),
@@ -171,8 +265,10 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
                       itemCount: _posts.length,
                       itemBuilder: (context, index) {
                         final post = _posts[index];
+                        final postId = post['id'];
                         final hidden = post['hidden'] == true;
                         final flagged = post['flagged'] == true;
+                        final isSelected = _selectedPosts.contains(postId);
                         
                         return Card(
                           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -181,11 +277,24 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Header
+                                // Header with checkbox
                                 Row(
                                   children: [
+                                    Checkbox(
+                                      value: isSelected,
+                                      onChanged: (checked) {
+                                        setState(() {
+                                          if (checked == true) {
+                                            _selectedPosts.add(postId);
+                                          } else {
+                                            _selectedPosts.remove(postId);
+                                          }
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(width: 8),
                                     Text(
-                                      post['username'] ?? 'User ${post['userId']}',
+                                      post['username'] ?? 'User ${post['authorId'] ?? post['userId'] ?? 'Unknown'}',
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,

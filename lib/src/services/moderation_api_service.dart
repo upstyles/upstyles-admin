@@ -279,6 +279,22 @@ class ModerationApiService {
     if (response.statusCode != 200) throw Exception('Failed to delete post');
   }
 
+  Future<void> batchHidePosts({required List<String> postIds, String? reason}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/posts/batch/hide');
+    final headers = await _headers();
+    final body = jsonEncode({'postIds': postIds, 'reason': reason});
+    final response = await _http.post(url, headers: headers, body: body);
+    if (response.statusCode != 200) throw Exception('Failed to batch hide posts');
+  }
+
+  Future<void> batchDeletePosts({required List<String> postIds}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/posts/batch/delete');
+    final headers = await _headers();
+    final body = jsonEncode({'postIds': postIds});
+    final response = await _http.post(url, headers: headers, body: body);
+    if (response.statusCode != 200) throw Exception('Failed to batch delete posts');
+  }
+
   // REPORTS
   Future<List<dynamic>> getReports({String? status, String? targetType}) async {
     final url = Uri.parse('$_baseUrl/api/moderation/reports').replace(queryParameters: {

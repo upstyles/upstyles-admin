@@ -250,6 +250,20 @@ class ModerationApiService {
     if (response.statusCode != 200) throw Exception('Failed to delete user');
   }
 
+  Future<void> hideUser({required String userId}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/users/$userId/hide');
+    final headers = await _headers();
+    final response = await _http.post(url, headers: headers);
+    if (response.statusCode != 200) throw Exception('Failed to hide user');
+  }
+
+  Future<void> unhideUser({required String userId}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/users/$userId/unhide');
+    final headers = await _headers();
+    final response = await _http.post(url, headers: headers);
+    if (response.statusCode != 200) throw Exception('Failed to unhide user');
+  }
+
   // POST MODERATION
   Future<List<dynamic>> getPosts({bool? flagged}) async {
     final url = Uri.parse('$_baseUrl/api/moderation/posts').replace(queryParameters: {

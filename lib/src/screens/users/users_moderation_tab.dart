@@ -467,11 +467,12 @@ class _UserDetailViewState extends State<_UserDetailView> {
 
     setState(() => _processing = true);
     try {
-      // You'll need to add this endpoint to your moderation API
-      // For now, we'll just show a message
+      await _moderationApi.hideUser(userId: widget.user['id']);
       if (mounted) {
+        Navigator.pop(context);
+        widget.onUpdate();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Hide user feature - API endpoint needed')),
+          const SnackBar(content: Text('User and all content hidden'), backgroundColor: AppTheme.warningColor),
         );
       }
     } catch (e) {

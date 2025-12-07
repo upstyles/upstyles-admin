@@ -249,10 +249,10 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                                 CircleAvatar(
                                   radius: 24,
                                   backgroundColor: AppTheme.primaryLight,
-                                  backgroundImage: user['photoUrl'] != null
-                                      ? NetworkImage(user['photoUrl'])
+                                  backgroundImage: (user['photoUrl'] ?? user['photoURL'] ?? user['profileImageUrl'] ?? user['profilePhoto']) != null
+                                      ? NetworkImage(user['photoUrl'] ?? user['photoURL'] ?? user['profileImageUrl'] ?? user['profilePhoto'])
                                       : null,
-                                  child: user['photoUrl'] == null
+                                  child: (user['photoUrl'] ?? user['photoURL'] ?? user['profileImageUrl'] ?? user['profilePhoto']) == null
                                       ? Text(
                                           (user['username'] ?? user['email'] ?? 'U')[0].toUpperCase(),
                                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -478,7 +478,7 @@ class _UserDetailViewState extends State<_UserDetailView> {
   Widget build(BuildContext context) {
     final banned = widget.user['banned'] == true;
     final createdAt = _formatTimestamp(widget.user['createdAt']);
-    final photoUrl = widget.user['photoUrl'];
+    final photoUrl = widget.user['photoUrl'] ?? widget.user['photoURL'] ?? widget.user['profileImageUrl'] ?? widget.user['profilePhoto'];
     final username = widget.user['username'] ?? 'No username';
     final email = widget.user['email'] ?? 'No email';
     final bio = widget.user['bio'] ?? '';
@@ -568,6 +568,11 @@ class _UserDetailViewState extends State<_UserDetailView> {
   }
 
   Widget _buildUserCard(String? photoUrl, String username, String email, bool banned, String createdAt) {
+    // Debug logging
+    if (photoUrl != null) {
+      print('[UserDetail] Photo URL: $photoUrl');
+    }
+    
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -577,8 +582,15 @@ class _UserDetailViewState extends State<_UserDetailView> {
             CircleAvatar(
               radius: 60,
               backgroundColor: AppTheme.primaryLight,
-              backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-              child: photoUrl == null
+              backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+                  ? NetworkImage(photoUrl)
+                  : null,
+              onBackgroundImageError: photoUrl != null
+                  ? (exception, stackTrace) {
+                      print('[UserDetail] Error loading avatar: $exception');
+                    }
+                  : null,
+              child: photoUrl == null || photoUrl.isEmpty
                   ? Text(
                       username[0].toUpperCase(),
                       style: const TextStyle(

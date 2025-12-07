@@ -388,6 +388,69 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
     }
   }
 
+  Future<void> _batchDelete() async {
+    if (_selectedSubmissions.isEmpty) return;
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Submissions'),
+        content: Text(
+          'Are you sure you want to permanently delete ${_selectedSubmissions.length} submission(s)? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      int successCount = 0;
+      int failCount = 0;
+
+      for (final submissionId in _selectedSubmissions) {
+        try {
+          await _moderationApi.deleteSubmission(submissionId: submissionId);
+          successCount++;
+        } catch (e) {
+          failCount++;
+          print('Failed to delete $submissionId: $e');
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted $successCount submission(s)' + 
+                         (failCount > 0 ? ', $failCount failed' : '')),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          _selectedSubmissions.clear();
+          _bulkMode = false;
+        });
+        _loadSubmissions();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Batch delete failed: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
   Future<String?> _showRejectDialog() async {
     final controller = TextEditingController();
     return showDialog<String>(
@@ -516,6 +579,16 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
                   label: const Text('Reject'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: _batchDelete,
+                  icon: const Icon(Icons.delete),
+                  label: const Text('Delete'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[700],
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -776,16 +849,31 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
                         label: const Text('APPROVE'),
                       ),
                     ],
-                    if (submission.isRejected)
-                      Text(
-                        'Rejected: ${submission.rejectionReason ?? "No reason provided"}',
-                        style: const TextStyle(color: Colors.red),
+                    if (submission.isRejected) ...[
+                      Expanded(
+                        child: Text(
+                          'Rejected: ${submission.rejectionReason ?? "No reason provided"}',
+                          style: const TextStyle(color: Colors.red),
+                        ),
                       ),
-                    if (submission.isApproved)
+                      IconButton(
+                        onPressed: () => _deleteSubmission(submission),
+                        icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                        tooltip: 'Delete',
+                      ),
+                    ],
+                    if (submission.isApproved) ...[
                       const Text(
                         'Approved',
                         style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
                       ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => _deleteSubmission(submission),
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        tooltip: 'Delete Approved Entry',
+                      ),
+                    ],
                   ],
                 ),
               ],

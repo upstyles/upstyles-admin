@@ -392,6 +392,36 @@ class _UserDetailView extends StatefulWidget {
 class _UserDetailViewState extends State<_UserDetailView> {
   final _moderationApi = ModerationApiService();
   bool _processing = false;
+  bool _loadingDetails = false;
+  List<dynamic> _recentPosts = [];
+  List<dynamic> _moderationHistory = [];
+  int _reportsCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserDetails();
+  }
+
+  Future<void> _loadUserDetails() async {
+    setState(() => _loadingDetails = true);
+    try {
+      final response = await _moderationApi.getUserDetails(userId: widget.user['id']);
+      if (mounted) {
+        setState(() {
+          _recentPosts = response['recentPosts'] ?? [];
+          _moderationHistory = response['moderationHistory'] ?? [];
+          _reportsCount = response['stats']?['reports'] ?? 0;
+          _loadingDetails = false;
+        });
+      }
+    } catch (e) {
+      print('[UserDetail] Error loading details: $e');
+      if (mounted) {
+        setState(() => _loadingDetails = false);
+      }
+    }
+  }
 
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return 'Unknown';
@@ -797,16 +827,29 @@ class _UserDetailViewState extends State<_UserDetailView> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () async {
-                  final username = widget.user['username'];
-                  if (username != null) {
-                    final url = Uri.parse('https://upstyles-pro.web.app/profile?username=$username');
+                  final userId = widget.user['id'];
+                  if (userId != null) {
+                    // Open user profile by navigating to the home feed and searching for user
+                    // Since the main app doesn't have a public user profile route, 
+                    // we'll open the main app and they can search for the user
+                    final username = widget.user['username'] ?? '';
+                    final url = Uri.parse('https://upstyles-pro.web.app/');
                     if (await canLaunchUrl(url)) {
                       await launchUrl(url, mode: LaunchMode.externalApplication);
+                    }
+                    // Show a snackbar with the username to search for
+                    if (mounted && username.isNotEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Opening UpStyles. Search for: @$username'),
+                          duration: const Duration(seconds: 5),
+                        ),
+                      );
                     }
                   }
                 },
                 icon: const Icon(Icons.open_in_new, size: 18),
-                label: const Text('View Profile on UpStyles'),
+                label: const Text('View on UpStyles'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
@@ -897,6 +940,207 @@ class _UserDetailViewState extends State<_UserDetailView> {
         _buildInfoTile('User Type', widget.user['userType'] ?? 'enthusiast'),
         _buildInfoTile('Email Verified', widget.user['emailVerified'] == true ? 'Yes' : 'No'),
         _buildInfoTile('Pro Badge', widget.user['isPro'] == true ? 'Yes' : 'No'),
+        
+        // Reports Section
+        if (_reportsCount > 0) ...[
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.flag, color: Colors.orange[700], size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Reports',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange[900],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'This user has been reported $_reportsCount time${_reportsCount > 1 ? 's' : ''}',
+                        style: TextStyle(fontSize: 13, color: Colors.orange[900]),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[700],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$_reportsCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        // Recent Posts Section
+        if (_recentPosts.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+          const Text(
+            'Recent Posts',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          ...List.generate(_recentPosts.length.clamp(0, 3), (index) {
+            final post = _recentPosts[index];
+            final content = post['content'] ?? '';
+            final imageUrls = (post['imageUrls'] as List?)?.cast<String>() ?? [];
+            final hasImage = imageUrls.isNotEmpty;
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (hasImage)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: Image.network(
+                        imageUrls.first,
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  if (hasImage) const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          content.length > 100 ? '${content.substring(0, 100)}...' : content,
+                          style: const TextStyle(fontSize: 13),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _formatTimestamp(post['created_at']),
+                          style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          if (_recentPosts.length > 3)
+            Text(
+              '+ ${_recentPosts.length - 3} more posts',
+              style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
+            ),
+        ],
+
+        // Moderation History Section
+        if (_moderationHistory.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+          const Text(
+            'Moderation History',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          ...List.generate(_moderationHistory.length.clamp(0, 5), (index) {
+            final entry = _moderationHistory[index];
+            final action = entry['action'] ?? 'unknown';
+            final moderatorEmail = entry['moderatorEmail'] ?? 'Unknown';
+            final timestamp = entry['timestamp'];
+            
+            IconData icon;
+            Color color;
+            switch (action) {
+              case 'ban':
+                icon = Icons.block;
+                color = Colors.red;
+                break;
+              case 'unban':
+                icon = Icons.check_circle;
+                color = Colors.green;
+                break;
+              case 'hide_user':
+                icon = Icons.visibility_off;
+                color = Colors.orange;
+                break;
+              case 'unhide_user':
+                icon = Icons.visibility;
+                color = Colors.green;
+                break;
+              default:
+                icon = Icons.info;
+                color = Colors.blue;
+            }
+            
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: color.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  Icon(icon, color: color, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          action.replaceAll('_', ' ').toUpperCase(),
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'by $moderatorEmail',
+                          style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    _formatTimestamp(timestamp),
+                    style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
         
         // Ban Info
         if (banned && widget.user['banReason'] != null) ...[

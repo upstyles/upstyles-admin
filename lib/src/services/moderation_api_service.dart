@@ -250,6 +250,16 @@ class ModerationApiService {
     if (response.statusCode != 200) throw Exception('Failed to delete user');
   }
 
+  Future<Map<String, dynamic>> getUserDetails({required String userId}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/users/$userId');
+    final headers = await _headers();
+    final response = await _http.get(url, headers: headers);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch user details');
+  }
+
   Future<void> hideUser({required String userId, String? reason}) async {
     final url = Uri.parse('$_baseUrl/api/moderation/users/$userId/hide');
     final headers = await _headers();

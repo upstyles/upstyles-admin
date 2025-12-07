@@ -105,6 +105,66 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
     );
   }
 
+  Future<void> _handleQuickAction(String postId, String action) async {
+    if (action == 'hide') {
+      final reason = await _showReasonDialog('Hide Post', 'Enter reason for hiding:');
+      if (reason == null || reason.isEmpty) return;
+      
+      try {
+        await _moderationApi.hidePost(postId: postId, reason: reason);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post hidden'), backgroundColor: AppTheme.warningColor),
+          );
+          _loadPosts();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
+    } else if (action == 'delete') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Delete Post'),
+          content: const Text('Permanently delete this post? This cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('CANCEL'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+              child: const Text('DELETE'),
+            ),
+          ],
+        ),
+      );
+      
+      if (confirmed != true) return;
+      
+      try {
+        await _moderationApi.deletePost(postId: postId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Post deleted'), backgroundColor: AppTheme.errorColor),
+          );
+          _loadPosts();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
+    }
+  }
+
   Future<String?> _showReasonDialog(String title, String hint) async {
     final controller = TextEditingController();
     return showDialog<String>(
@@ -223,6 +283,7 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
                                 });
                               },
                               onTap: () => _showPostDetails(post),
+                              onQuickAction: (action) => _handleQuickAction(post['id'], action),
                             );
                           },
                         );
@@ -240,6 +301,7 @@ class _PostCard extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onToggleSelect;
   final VoidCallback onTap;
+  final Function(String action) onQuickAction;
 
   const _PostCard({
     required this.post,
@@ -247,7 +309,32 @@ class _PostCard extends StatelessWidget {
     required this.isSelected,
     required this.onToggleSelect,
     required this.onTap,
+    required this.onQuickAction,
   });
+
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return 'Unknown';
+    try {
+      DateTime date;
+      if (timestamp is Map && timestamp.containsKey('_seconds')) {
+        date = DateTime.fromMillisecondsSinceEpoch(timestamp['_seconds'] * 1000);
+      } else if (timestamp is String) {
+        date = DateTime.parse(timestamp);
+      } else {
+        return 'Unknown';
+      }
+      final now = DateTime.now();
+      final diff = now.difference(date);
+      
+      if (diff.inMinutes < 1) return 'Just now';
+      if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+      if (diff.inDays < 1) return '${diff.inHours}h ago';
+      if (diff.inDays < 7) return '${diff.inDays}d ago';
+      return '${date.month}/${date.day}/${date.year}';
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -255,74 +342,190 @@ class _PostCard extends StatelessWidget {
     final flagged = post['flagged'] == true;
     final imageUrls = (post['imageUrls'] as List?)?.cast<String>() ?? [];
     final username = post['username'] ?? 'User ${post['authorId'] ?? ''}';
+    final likesCount = post['likesCount'] ?? 0;
+    final commentsCount = post['commentsCount'] ?? 0;
+    final createdAt = _formatTimestamp(post['createdAt']);
 
-    return InkWell(
-      onTap: onTap,
-      child: Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (imageUrls.isNotEmpty)
-              AspectRatio(
-                aspectRatio: 1,
-                child: Image.network(
-                  imageUrls.first,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.broken_image, size: 48),
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image
+          if (imageUrls.isNotEmpty)
+            Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: Image.network(
+                    imageUrls.first,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.broken_image, size: 48),
+                    ),
                   ),
                 ),
-              ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (batchMode)
-                          Checkbox(value: isSelected, onChanged: (_) => onToggleSelect()),
-                        Expanded(
-                          child: Text(username, style: const TextStyle(fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
-                        ),
-                        if (flagged)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppTheme.warningColor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text('FLAG', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                if (imageUrls.length > 1)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.image, size: 12, color: Colors.white),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${imageUrls.length}',
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                           ),
-                        if (hidden)
-                          Container(
-                            margin: const EdgeInsets.only(left: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.grey,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text('HIDE', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: Text(
-                        post['content'] ?? '',
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 13, decoration: hidden ? TextDecoration.lineThrough : null),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+              ],
+            ),
+          
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header with checkbox, username, and badges
+                  Row(
+                    children: [
+                      if (batchMode)
+                        Checkbox(
+                          value: isSelected,
+                          onChanged: (_) => onToggleSelect(),
+                        ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              username,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              createdAt,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(context).textTheme.bodySmall?.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (flagged)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.warningColor,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('FLAG', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                        ),
+                      if (hidden)
+                        Container(
+                          margin: const EdgeInsets.only(left: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.grey,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('HIDE', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Content
+                  Expanded(
+                    child: Text(
+                      post['content'] ?? '',
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        decoration: hidden ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // Engagement stats
+                  Row(
+                    children: [
+                      Icon(Icons.favorite, size: 14, color: Colors.red[300]),
+                      const SizedBox(width: 4),
+                      Text('$likesCount', style: const TextStyle(fontSize: 12)),
+                      const SizedBox(width: 16),
+                      Icon(Icons.comment, size: 14, color: Colors.blue[300]),
+                      const SizedBox(width: 4),
+                      Text('$commentsCount', style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+          
+          // Action buttons
+          if (!batchMode)
+            Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Theme.of(context).dividerColor),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () => onTap(),
+                      icon: const Icon(Icons.visibility, size: 16),
+                      label: const Text('View', style: TextStyle(fontSize: 12)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                    ),
+                  ),
+                  if (!hidden)
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () => onQuickAction('hide'),
+                        icon: const Icon(Icons.visibility_off, size: 16),
+                        label: const Text('Hide', style: TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          foregroundColor: AppTheme.warningColor,
+                        ),
+                      ),
+                    ),
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () => onQuickAction('delete'),
+                      icon: const Icon(Icons.delete, size: 16),
+                      label: const Text('Delete', style: TextStyle(fontSize: 12)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        foregroundColor: AppTheme.errorColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

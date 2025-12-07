@@ -21,6 +21,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  bool _isRailCollapsed = false;
 
   final List<Widget> _tabs = const [
     ExploreSubmissionsTab(),
@@ -74,13 +75,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: Row(
         children: [
-          NavigationRail(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (index) {
-              setState(() => _selectedIndex = index);
-            },
-            labelType: NavigationRailLabelType.all,
-            destinations: const [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Theme.of(context).colorScheme.surface,
+                  Theme.of(context).colorScheme.surface.withOpacity(0.8),
+                ],
+              ),
+              border: Border(
+                right: BorderSide(
+                  color: Theme.of(context).dividerColor,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: NavigationRail(
+                    selectedIndex: _selectedIndex,
+                    extended: !_isRailCollapsed,
+                    onDestinationSelected: (index) {
+                      setState(() => _selectedIndex = index);
+                    },
+                    labelType: _isRailCollapsed ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+                    leading: !_isRailCollapsed ? const SizedBox(height: 20) : null,
+                    destinations: const [
               NavigationRailDestination(
                 icon: Icon(Icons.article_outlined),
                 selectedIcon: Icon(Icons.article),
@@ -112,8 +135,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 label: Text('Audit Log'),
               ),
             ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: IconButton(
+                    icon: Icon(
+                      _isRailCollapsed ? Icons.chevron_right : Icons.chevron_left,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      setState(() => _isRailCollapsed = !_isRailCollapsed);
+                    },
+                    tooltip: _isRailCollapsed ? 'Expand sidebar' : 'Collapse sidebar',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const VerticalDivider(thickness: 1, width: 1),
           Expanded(
             child: _tabs[_selectedIndex],
           ),

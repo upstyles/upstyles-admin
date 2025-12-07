@@ -704,6 +704,28 @@ class _PostDetailViewState extends State<_PostDetailView> {
     }
   }
 
+  String _formatFullDateTime(dynamic timestamp) {
+    if (timestamp == null) return 'Unknown';
+    try {
+      DateTime date;
+      if (timestamp is Map && timestamp.containsKey('_seconds')) {
+        date = DateTime.fromMillisecondsSinceEpoch(timestamp['_seconds'] * 1000);
+      } else if (timestamp is String) {
+        date = DateTime.parse(timestamp);
+      } else {
+        return 'Unknown';
+      }
+      
+      final hour = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+      final amPm = date.hour >= 12 ? 'PM' : 'AM';
+      final minute = date.minute.toString().padLeft(2, '0');
+      
+      return '${date.month}/${date.day}/${date.year} at $hour:$minute $amPm';
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final imageUrls = (widget.post['imageUrls'] as List?)?.cast<String>() ?? [];
@@ -713,6 +735,7 @@ class _PostDetailViewState extends State<_PostDetailView> {
     final likesCount = widget.post['likesCount'] ?? 0;
     final commentsCount = widget.post['commentsCount'] ?? 0;
     final createdAt = _formatTimestamp(widget.post['createdAt']);
+    final fullDateTime = _formatFullDateTime(widget.post['createdAt']);
     final isDesktop = MediaQuery.of(context).size.width > 900;
 
     return Column(
@@ -775,7 +798,7 @@ class _PostDetailViewState extends State<_PostDetailView> {
                       // Post Details (Right)
                       Expanded(
                         flex: 1,
-                        child: _buildPostDetails(context, username, createdAt, likesCount, commentsCount, flagged, hidden),
+                        child: _buildPostDetails(context, username, createdAt, fullDateTime, likesCount, commentsCount, flagged, hidden),
                       ),
                     ],
                   )
@@ -811,7 +834,7 @@ class _PostDetailViewState extends State<_PostDetailView> {
                         const SizedBox(height: 20),
                       ],
                       // Post Details (Mobile)
-                      _buildPostDetails(context, username, createdAt, likesCount, commentsCount, flagged, hidden),
+                      _buildPostDetails(context, username, createdAt, fullDateTime, likesCount, commentsCount, flagged, hidden),
                     ],
                   ),
           ),
@@ -863,7 +886,7 @@ class _PostDetailViewState extends State<_PostDetailView> {
     );
   }
 
-  Widget _buildPostDetails(BuildContext context, String username, String createdAt, int likesCount, int commentsCount, bool flagged, bool hidden) {
+  Widget _buildPostDetails(BuildContext context, String username, String createdAt, String fullDateTime, int likesCount, int commentsCount, bool flagged, bool hidden) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -907,6 +930,7 @@ class _PostDetailViewState extends State<_PostDetailView> {
                   ),
                   const SizedBox(height: 4),
                   Text(createdAt, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
+                  Text(fullDateTime, style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7))),
                 ],
               ),
             ),

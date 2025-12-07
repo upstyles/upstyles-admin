@@ -35,29 +35,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final isMobile = MediaQuery.of(context).size.width < 600;
     
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.admin_panel_settings),
-            SizedBox(width: 12),
-            Text('UpStyles Admin Dashboard'),
+            const Icon(Icons.admin_panel_settings),
+            if (!isMobile) ...const [
+              SizedBox(width: 12),
+              Text('UpStyles Admin Dashboard'),
+            ],
           ],
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 4 : 16),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(user?.email ?? 'Admin'),
-                const SizedBox(width: 16),
+                if (!isMobile) ...[
+                  Text(user?.email ?? 'Admin', style: const TextStyle(fontSize: 14)),
+                  const SizedBox(width: 16),
+                ],
                 IconButton(
                   icon: const Icon(Icons.palette_outlined),
                   onPressed: () => _showThemeDialog(context),
                   tooltip: 'Theme Settings',
                 ),
-                const SizedBox(width: 8),
+                if (!isMobile) const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.logout),
                   onPressed: () async {
@@ -75,7 +82,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: Row(
         children: [
-          Container(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: _isRailCollapsed ? 56 : 200,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -98,10 +107,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: NavigationRail(
                     selectedIndex: _selectedIndex,
                     extended: !_isRailCollapsed,
+                    minWidth: 56,
+                    minExtendedWidth: 200,
                     onDestinationSelected: (index) {
                       setState(() => _selectedIndex = index);
                     },
-                    labelType: _isRailCollapsed ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+                    labelType: NavigationRailLabelType.none,
                     leading: !_isRailCollapsed ? const SizedBox(height: 20) : null,
                     destinations: const [
               NavigationRailDestination(
@@ -137,19 +148,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   child: IconButton(
                     icon: Icon(
                       _isRailCollapsed ? Icons.chevron_right : Icons.chevron_left,
-                      size: 20,
+                      size: 18,
                     ),
                     onPressed: () {
                       setState(() => _isRailCollapsed = !_isRailCollapsed);
                     },
                     tooltip: _isRailCollapsed ? 'Expand sidebar' : 'Collapse sidebar',
                     style: IconButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                      padding: const EdgeInsets.all(8),
                     ),
                   ),
                 ),

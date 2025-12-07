@@ -119,7 +119,15 @@ class _ReportsModerationTabState extends State<ReportsModerationTab> {
         // Header with filters
         Container(
           padding: const EdgeInsets.all(16),
-          color: AppTheme.surfaceColor,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).dividerColor,
+                width: 1,
+              ),
+            ),
+          ),
           child: Row(
             children: [
               const Text('Reports', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),

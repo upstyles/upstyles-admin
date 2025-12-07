@@ -212,6 +212,95 @@ class ModerationApiService {
     final items = (data['items'] as List?) ?? [];
     return items.map((item) => AuditLogEntry.fromJson(item)).toList();
   }
+
+  // USER MODERATION
+  Future<List<dynamic>> getUsers({String? search, String? status}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/users').replace(queryParameters: {
+      if (search != null && search.isNotEmpty) 'search': search,
+      if (status != null) 'status': status,
+    });
+    final headers = await _headers();
+    final response = await _http.get(url, headers: headers);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['users'] as List;
+    }
+    throw Exception('Failed to fetch users');
+  }
+
+  Future<void> banUser({required String userId, required String reason}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/users/$userId/ban');
+    final headers = await _headers();
+    final body = jsonEncode({'reason': reason});
+    final response = await _http.post(url, headers: headers, body: body);
+    if (response.statusCode != 200) throw Exception('Failed to ban user');
+  }
+
+  Future<void> unbanUser({required String userId}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/users/$userId/unban');
+    final headers = await _headers();
+    final response = await _http.post(url, headers: headers);
+    if (response.statusCode != 200) throw Exception('Failed to unban user');
+  }
+
+  Future<void> deleteUser({required String userId}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/users/$userId');
+    final headers = await _headers();
+    final response = await _http.delete(url, headers: headers);
+    if (response.statusCode != 200) throw Exception('Failed to delete user');
+  }
+
+  // POST MODERATION
+  Future<List<dynamic>> getPosts({bool? flagged}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/posts').replace(queryParameters: {
+      if (flagged != null) 'flagged': flagged.toString(),
+    });
+    final headers = await _headers();
+    final response = await _http.get(url, headers: headers);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['posts'] as List;
+    }
+    throw Exception('Failed to fetch posts');
+  }
+
+  Future<void> hidePost({required String postId, required String reason}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/posts/$postId/hide');
+    final headers = await _headers();
+    final body = jsonEncode({'hidden': true, 'reason': reason});
+    final response = await _http.post(url, headers: headers, body: body);
+    if (response.statusCode != 200) throw Exception('Failed to hide post');
+  }
+
+  Future<void> deletePost({required String postId}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/posts/$postId');
+    final headers = await _headers();
+    final response = await _http.delete(url, headers: headers);
+    if (response.statusCode != 200) throw Exception('Failed to delete post');
+  }
+
+  // REPORTS
+  Future<List<dynamic>> getReports({String? status, String? targetType}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/reports').replace(queryParameters: {
+      if (status != null) 'status': status,
+      if (targetType != null) 'targetType': targetType,
+    });
+    final headers = await _headers();
+    final response = await _http.get(url, headers: headers);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['reports'] as List;
+    }
+    throw Exception('Failed to fetch reports');
+  }
+
+  Future<void> resolveReport({required String reportId, required String action, String? notes}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/reports/$reportId/resolve');
+    final headers = await _headers();
+    final body = jsonEncode({'action': action, 'notes': notes});
+    final response = await _http.post(url, headers: headers, body: body);
+    if (response.statusCode != 200) throw Exception('Failed to resolve report');
+  }
 }
 
 // Models

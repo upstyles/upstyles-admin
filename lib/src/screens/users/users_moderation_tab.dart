@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../utils/logger.dart';
-import '../../services/user_quality_service.dart';
-import 'package:intl/intl.dart';
+import '../../services/moderation_api_service.dart';
+import '../../theme/app_theme.dart';
 
 class UsersModerationTab extends StatefulWidget {
   const UsersModerationTab({super.key});
@@ -12,439 +10,336 @@ class UsersModerationTab extends StatefulWidget {
 }
 
 class _UsersModerationTabState extends State<UsersModerationTab> {
-  final _firestore = FirebaseFirestore.instance;
-  final _qualityService = UserQualityService();
-  List<Map<String, dynamic>> _users = [];
-  List<UserQualityScore> _topContributors = [];
-  bool _isLoading = false;
-  bool _showTopContributors = true;
-  String _searchQuery = '';
-  String _filterType = 'reported'; // all, reported, suspended
+  final _moderationApi = ModerationApiService();
+  List<dynamic> _users = [];
+  bool _loading = true;
+  String? _searchQuery;
+  String _statusFilter = 'all';
 
   @override
   void initState() {
     super.initState();
     _loadUsers();
-    _loadTopContributors();
-  }
-
-  Future<void> _loadTopContributors() async {
-    try {
-      final contributors = await _qualityService.getTopContributors(limit: 10);
-      setState(() {
-        _topContributors = contributors;
-      });
-    } catch (e) {
-      AppLogger.error('Error loading top contributors: $e');
-    }
   }
 
   Future<void> _loadUsers() async {
-    setState(() => _isLoading = true);
-    
+    setState(() => _loading = true);
     try {
-      Query query = _firestore.collection('users');
-
-      if (_filterType == 'reported') {
-        query = query.where('reported', isEqualTo: true);
-      } else if (_filterType == 'suspended') {
-        query = query.where('suspended', isEqualTo: true);
+      final users = await _moderationApi.getUsers(
+        search: _searchQuery,
+        status: _statusFilter == 'all' ? null : _statusFilter,
+      );
+      if (mounted) {
+        setState(() {
+          _users = users;
+          _loading = false;
+        });
       }
-
-      query = query.orderBy('createdAt', descending: true).limit(100);
-
-      final snapshot = await query.get();
-      
-      setState(() {
-        _users = snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          data['uid'] = doc.id;
-          return data;
-        }).toList();
-        _isLoading = false;
-      });
     } catch (e) {
-      AppLogger.error('Error loading users', error: e);
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading users: $e')),
+        );
+      }
     }
   }
 
-  Future<void> _suspendUser(String userId, String reason, int days) async {
+  Future<void> _banUser(dynamic user) async {
+    final reason = await _showReasonDialog('Ban User', 'Enter ban reason:');
+    if (reason == null || reason.isEmpty) return;
+
     try {
-      final suspendUntil = DateTime.now().add(Duration(days: days));
-      
-      await _firestore.collection('users').doc(userId).update({
-        'suspended': true,
-        'suspendedAt': FieldValue.serverTimestamp(),
-        'suspendedUntil': Timestamp.fromDate(suspendUntil),
-        'suspensionReason': reason,
-      });
-
-      // Optionally disable Firebase Auth
-      // Would require admin SDK from Cloud Functions
-
+      await _moderationApi.banUser(userId: user['id'], reason: reason);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('User suspended for $days days')),
+          const SnackBar(content: Text('User banned'), backgroundColor: Colors.red),
         );
         _loadUsers();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }
   }
 
-  Future<void> _unsuspendUser(String userId) async {
-    try {
-      await _firestore.collection('users').doc(userId).update({
-        'suspended': false,
-        'suspendedAt': null,
-        'suspendedUntil': null,
-        'suspensionReason': null,
-      });
+  Future<void> _unbanUser(dynamic user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unban User'),
+        content: Text('Unban ${user['username'] ?? user['email']}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('UNBAN'),
+          ),
+        ],
+      ),
+    );
 
+    if (confirmed != true) return;
+
+    try {
+      await _moderationApi.unbanUser(userId: user['id']);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User suspension lifted')),
+          const SnackBar(content: Text('User unbanned'), backgroundColor: AppTheme.successColor),
         );
         _loadUsers();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }
   }
 
-  Future<void> _clearReports(String userId) async {
-    try {
-      await _firestore.collection('users').doc(userId).update({
-        'reported': false,
-        'reportCount': 0,
-        'reports': FieldValue.delete(),
-      });
+  Future<void> _deleteUser(dynamic user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete User'),
+        content: Text(
+          'Permanently delete ${user['username'] ?? user['email']} and ALL their content? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
 
+    if (confirmed != true) return;
+
+    try {
+      await _moderationApi.deleteUser(userId: user['id']);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reports cleared')),
+          const SnackBar(content: Text('User deleted'), backgroundColor: AppTheme.errorColor),
         );
         _loadUsers();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }
+  }
+
+  Future<String?> _showReasonDialog(String title, String hint) async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(hintText: hint),
+          maxLines: 3,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('SUBMIT'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Search and filter bar
+        // Header with search and filters
         Container(
-          padding: const EdgeInsets.all(8),
-          child: Column(
+          padding: const EdgeInsets.all(16),
+          color: AppTheme.surfaceColor,
+          child: Row(
             children: [
-              TextField(
-                decoration: const InputDecoration(
-                  hintText: 'Search users by username or email...',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
+              Expanded(
+                child: TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Search users by username or email...',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onSubmitted: (value) {
+                    setState(() => _searchQuery = value.isEmpty ? null : value);
+                    _loadUsers();
+                  },
                 ),
-                onChanged: (value) {
-                  setState(() => _searchQuery = value);
+              ),
+              const SizedBox(width: 16),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'all', label: Text('All')),
+                  ButtonSegment(value: 'banned', label: Text('Banned')),
+                ],
+                selected: {_statusFilter},
+                onSelectionChanged: (Set<String> newSelection) {
+                  setState(() => _statusFilter = newSelection.first);
+                  _loadUsers();
                 },
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Text('Filter: '),
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: const Text('Reported'),
-                    selected: _filterType == 'reported',
-                    onSelected: (_) {
-                      setState(() => _filterType = 'reported');
-                      _loadUsers();
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: const Text('Suspended'),
-                    selected: _filterType == 'suspended',
-                    onSelected: (_) {
-                      setState(() => _filterType = 'suspended');
-                      _loadUsers();
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: const Text('All'),
-                    selected: _filterType == 'all',
-                    onSelected: (_) {
-                      setState(() => _filterType = 'all');
-                      _loadUsers();
-                    },
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: _loadUsers,
-                  ),
-                ],
+              const SizedBox(width: 16),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: _loadUsers,
+                tooltip: 'Refresh',
               ),
             ],
           ),
         ),
         const Divider(height: 1),
-        
-        Expanded(child: _buildUsersList()),
+
+        // Users list
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _users.isEmpty
+                  ? const Center(child: Text('No users found'))
+                  : ListView.builder(
+                      itemCount: _users.length,
+                      itemBuilder: (context, index) {
+                        final user = _users[index];
+                        final banned = user['banned'] == true;
+                        
+                        return Card(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                // Avatar
+                                CircleAvatar(
+                                  radius: 24,
+                                  backgroundColor: AppTheme.primaryLight,
+                                  backgroundImage: user['photoUrl'] != null
+                                      ? NetworkImage(user['photoUrl'])
+                                      : null,
+                                  child: user['photoUrl'] == null
+                                      ? Text(
+                                          (user['username'] ?? user['email'] ?? 'U')[0].toUpperCase(),
+                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 16),
+
+                                // User info
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            user['username'] ?? 'No username',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          if (banned) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.errorColor,
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: const Text(
+                                                'BANNED',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        user['email'] ?? 'No email',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                      if (banned && user['banReason'] != null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Reason: ${user['banReason']}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.errorColor,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+
+                                // Actions
+                                if (banned)
+                                  ElevatedButton.icon(
+                                    onPressed: () => _unbanUser(user),
+                                    icon: const Icon(Icons.check, size: 18),
+                                    label: const Text('Unban'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.successColor,
+                                    ),
+                                  )
+                                else
+                                  ElevatedButton.icon(
+                                    onPressed: () => _banUser(user),
+                                    icon: const Icon(Icons.block, size: 18),
+                                    label: const Text('Ban'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.errorColor,
+                                    ),
+                                  ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  onPressed: () => _deleteUser(user),
+                                  icon: const Icon(Icons.delete_outline, color: AppTheme.errorColor),
+                                  tooltip: 'Delete User',
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+        ),
       ],
-    );
-  }
-
-  Widget _buildUsersList() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    List<Map<String, dynamic>> filteredUsers = _users;
-    if (_searchQuery.isNotEmpty) {
-      filteredUsers = _users.where((user) {
-        final username = (user['username'] ?? '').toLowerCase();
-        final email = (user['email'] ?? '').toLowerCase();
-        final query = _searchQuery.toLowerCase();
-        return username.contains(query) || email.contains(query);
-      }).toList();
-    }
-
-    if (filteredUsers.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.people, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
-              Text('No users found', style: TextStyle(fontSize: 20)),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
-      itemCount: filteredUsers.length,
-      itemBuilder: (context, index) => _buildUserCard(filteredUsers[index]),
-    );
-  }
-
-  Widget _buildUserCard(Map<String, dynamic> user) {
-    final dateFormat = DateFormat('MMM d, yyyy');
-    final createdAt = (user['createdAt'] as Timestamp?)?.toDate();
-    final isSuspended = user['suspended'] == true;
-    final isReported = user['reported'] == true;
-    final reportCount = user['reportCount'] ?? 0;
-    
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: ExpansionTile(
-        leading: CircleAvatar(
-          backgroundImage: user['photoURL'] != null
-              ? NetworkImage(user['photoURL'])
-              : null,
-          child: user['photoURL'] == null
-              ? Text(user['username']?[0]?.toUpperCase() ?? '?')
-              : null,
-        ),
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                '@${user['username'] ?? "unknown"}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            if (isSuspended)
-              const Chip(
-                label: Text('SUSPENDED'),
-                backgroundColor: Colors.red,
-                labelStyle: TextStyle(color: Colors.white),
-              ),
-            if (isReported && !isSuspended)
-              Chip(
-                label: Text('$reportCount REPORTS'),
-                backgroundColor: Colors.orange,
-              ),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(user['email'] ?? 'No email'),
-            if (createdAt != null)
-              Text('Joined: ${dateFormat.format(createdAt)}'),
-          ],
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // User info
-                _buildInfoRow('User ID', user['uid']),
-                _buildInfoRow('Display Name', user['displayName'] ?? 'N/A'),
-                _buildInfoRow('Profile Type', user['profileType'] ?? 'N/A'),
-                
-                if (user['bio'] != null) ...[
-                  const SizedBox(height: 8),
-                  const Text('Bio:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(user['bio']),
-                ],
-
-                if (isSuspended && user['suspensionReason'] != null) ...[
-                  const SizedBox(height: 16),
-                  const Text('Suspension Reason:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(user['suspensionReason'], style: const TextStyle(color: Colors.red)),
-                ],
-
-                if (isReported && user['reports'] != null) ...[
-                  const SizedBox(height: 16),
-                  const Text('Reports:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ...(user['reports'] as List).map((report) {
-                    return Text('• ${report['reason'] ?? "No reason"}');
-                  }),
-                ],
-
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 8),
-
-                // Actions
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (isReported && !isSuspended)
-                      TextButton.icon(
-                        onPressed: () => _clearReports(user['uid']),
-                        icon: const Icon(Icons.check),
-                        label: const Text('CLEAR REPORTS'),
-                        style: TextButton.styleFrom(foregroundColor: Colors.green),
-                      ),
-                    const SizedBox(width: 8),
-                    if (isSuspended)
-                      ElevatedButton.icon(
-                        onPressed: () => _unsuspendUser(user['uid']),
-                        icon: const Icon(Icons.lock_open),
-                        label: const Text('LIFT SUSPENSION'),
-                      )
-                    else
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          final result = await _showSuspensionDialog();
-                          if (result != null) {
-                            await _suspendUser(user['uid'], result['reason'], result['days']);
-                          }
-                        },
-                        icon: const Icon(Icons.block),
-                        label: const Text('SUSPEND USER'),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  Future<Map<String, dynamic>?> _showSuspensionDialog() async {
-    final reasonController = TextEditingController();
-    int days = 7;
-
-    return showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Suspend User'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: reasonController,
-                decoration: const InputDecoration(
-                  labelText: 'Reason *',
-                  hintText: 'Why is this user being suspended?',
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Text('Duration: '),
-                  DropdownButton<int>(
-                    value: days,
-                    items: const [
-                      DropdownMenuItem(value: 1, child: Text('1 day')),
-                      DropdownMenuItem(value: 3, child: Text('3 days')),
-                      DropdownMenuItem(value: 7, child: Text('7 days')),
-                      DropdownMenuItem(value: 14, child: Text('14 days')),
-                      DropdownMenuItem(value: 30, child: Text('30 days')),
-                      DropdownMenuItem(value: 365, child: Text('1 year')),
-                    ],
-                    onChanged: (value) {
-                      setState(() => days = value!);
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('CANCEL'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (reasonController.text.isNotEmpty) {
-                  Navigator.pop(context, {
-                    'reason': reasonController.text,
-                    'days': days,
-                  });
-                }
-              },
-              child: const Text('SUSPEND'),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

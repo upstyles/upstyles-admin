@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../submissions/explore_submissions_tab.dart';
 import '../analytics/analytics_tab.dart';
 import '../users/users_moderation_tab.dart';
+import '../posts/posts_moderation_tab.dart';
+import '../reports/reports_moderation_tab.dart';
 import '../audit/audit_log_tab.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -19,8 +21,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   final List<Widget> _tabs = const [
     ExploreSubmissionsTab(),
-    AnalyticsTab(),
     UsersModerationTab(),
+    PostsModerationTab(),
+    ReportsModerationTab(),
+    AnalyticsTab(),
     AuditLogTab(),
   ];
 
@@ -74,14 +78,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 label: Text('Submissions'),
               ),
               NavigationRailDestination(
-                icon: Icon(Icons.analytics_outlined),
-                selectedIcon: Icon(Icons.analytics),
-                label: Text('Analytics'),
-              ),
-              NavigationRailDestination(
                 icon: Icon(Icons.people_outlined),
                 selectedIcon: Icon(Icons.people),
                 label: Text('Users'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.feed_outlined),
+                selectedIcon: Icon(Icons.feed),
+                label: Text('Posts'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.flag_outlined),
+                selectedIcon: Icon(Icons.flag),
+                label: Text('Reports'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.analytics_outlined),
+                selectedIcon: Icon(Icons.analytics),
+                label: Text('Analytics'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.history),

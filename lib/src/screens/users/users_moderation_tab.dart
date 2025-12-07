@@ -30,6 +30,20 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
         search: _searchQuery,
         status: _statusFilter == 'all' ? null : _statusFilter,
       );
+      
+      // Debug: Log user data to see what fields are available
+      if (users.isNotEmpty) {
+        print('[Users] Total users loaded: ${users.length}');
+        print('[Users] Sample user data: ${users.first}');
+        final firstUser = users.first as Map;
+        print('[Users] Available keys: ${firstUser.keys.toList()}');
+        print('[Users] Photo fields check:');
+        print('  - photoUrl: ${firstUser['photoUrl']}');
+        print('  - photoURL: ${firstUser['photoURL']}');
+        print('  - profileImageUrl: ${firstUser['profileImageUrl']}');
+        print('  - profilePhoto: ${firstUser['profilePhoto']}');
+      }
+      
       if (mounted) {
         setState(() {
           _users = users;
@@ -249,10 +263,10 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                                 CircleAvatar(
                                   radius: 24,
                                   backgroundColor: AppTheme.primaryLight,
-                                  backgroundImage: (user['photoUrl'] ?? user['photoURL'] ?? user['profileImageUrl'] ?? user['profilePhoto']) != null
-                                      ? NetworkImage(user['photoUrl'] ?? user['photoURL'] ?? user['profileImageUrl'] ?? user['profilePhoto'])
+                                  backgroundImage: user['avatar_url'] != null && user['avatar_url'].toString().isNotEmpty
+                                      ? NetworkImage(user['avatar_url'])
                                       : null,
-                                  child: (user['photoUrl'] ?? user['photoURL'] ?? user['profileImageUrl'] ?? user['profilePhoto']) == null
+                                  child: user['avatar_url'] == null || user['avatar_url'].toString().isEmpty
                                       ? Text(
                                           (user['username'] ?? user['email'] ?? 'U')[0].toUpperCase(),
                                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -478,7 +492,7 @@ class _UserDetailViewState extends State<_UserDetailView> {
   Widget build(BuildContext context) {
     final banned = widget.user['banned'] == true;
     final createdAt = _formatTimestamp(widget.user['createdAt']);
-    final photoUrl = widget.user['photoUrl'] ?? widget.user['photoURL'] ?? widget.user['profileImageUrl'] ?? widget.user['profilePhoto'];
+    final photoUrl = widget.user['avatar_url'];
     final username = widget.user['username'] ?? 'No username';
     final email = widget.user['email'] ?? 'No email';
     final bio = widget.user['bio'] ?? '';

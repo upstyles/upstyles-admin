@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/moderation_api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/section_header.dart';
@@ -332,31 +333,8 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                                   ),
                                 ),
 
-                                // Actions
-                                if (banned)
-                                  ElevatedButton.icon(
-                                    onPressed: () => _unbanUser(user),
-                                    icon: const Icon(Icons.check, size: 18),
-                                    label: const Text('Unban'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.successColor,
-                                    ),
-                                  )
-                                else
-                                  ElevatedButton.icon(
-                                    onPressed: () => _banUser(user),
-                                    icon: const Icon(Icons.block, size: 18),
-                                    label: const Text('Ban'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.errorColor,
-                                    ),
-                                  ),
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  onPressed: () => _deleteUser(user),
-                                  icon: const Icon(Icons.delete_outline, color: AppTheme.errorColor),
-                                  tooltip: 'Delete User',
-                                ),
+                                // Arrow icon to indicate clickable
+                                const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
                               ],
                             ),
                           ),
@@ -662,6 +640,29 @@ class _UserDetailViewState extends State<_UserDetailView> {
             _buildInfoRow(Icons.calendar_today, 'Joined', createdAt),
             const SizedBox(height: 8),
             _buildInfoRow(Icons.fingerprint, 'User ID', widget.user['id'] ?? 'Unknown'),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            // Profile Link Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final username = widget.user['username'];
+                  if (username != null) {
+                    final url = Uri.parse('https://upstyles-pro.web.app/profile?username=$username');
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    }
+                  }
+                },
+                icon: const Icon(Icons.open_in_new, size: 18),
+                label: const Text('View Profile on UpStyles'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
           ],
         ),
       ),

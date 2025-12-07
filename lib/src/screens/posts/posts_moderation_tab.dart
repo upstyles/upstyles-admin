@@ -713,6 +713,7 @@ class _PostDetailViewState extends State<_PostDetailView> {
     final likesCount = widget.post['likesCount'] ?? 0;
     final commentsCount = widget.post['commentsCount'] ?? 0;
     final createdAt = _formatTimestamp(widget.post['createdAt']);
+    final isDesktop = MediaQuery.of(context).size.width > 900;
 
     return Column(
       children: [
@@ -726,167 +727,93 @@ class _PostDetailViewState extends State<_PostDetailView> {
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Image Gallery
-                if (imageUrls.isNotEmpty)
-                  SizedBox(
-                    height: 300,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: imageUrls.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              imageUrls[index],
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 300,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.broken_image, size: 48),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                const SizedBox(height: 20),
-
-                // Author & Status
-                Row(
-                  children: [
-                    CircleAvatar(
-                      child: Text(username[0].toUpperCase()),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(username, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                              if (flagged) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.warningColor,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text('FLAGGED', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                              if (hidden) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text('HIDDEN', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(createdAt, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 16),
-
-                // Content
-                Text(widget.post['content'] ?? '', style: const TextStyle(fontSize: 15, height: 1.4)),
-
-                // Hashtags
-                if (widget.post['hashtags'] != null && (widget.post['hashtags'] as List).isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: (widget.post['hashtags'] as List).map((tag) => 
-                      Chip(
-                        label: Text('#$tag'),
-                        visualDensity: VisualDensity.compact,
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                      )
-                    ).toList(),
-                  ),
-                ],
-
-                // Location
-                if (widget.post['location'] != null) ...[
-                  const SizedBox(height: 16),
-                  Row(
+            child: isDesktop && imageUrls.isNotEmpty
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.location_on, size: 16),
-                      const SizedBox(width: 4),
-                      Text(widget.post['location'], style: const TextStyle(fontSize: 13)),
+                      // Image Gallery (Left)
+                      Expanded(
+                        flex: 1,
+                        child: SizedBox(
+                          height: 500,
+                          child: imageUrls.length > 1
+                              ? ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: imageUrls.length,
+                                  itemBuilder: (context, index) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          imageUrls[index],
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            width: 500,
+                                            color: Colors.grey[300],
+                                            child: const Icon(Icons.broken_image, size: 48),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                )
+                              : ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    imageUrls.first,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      color: Colors.grey[300],
+                                      child: const Icon(Icons.broken_image, size: 48),
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      // Post Details (Right)
+                      Expanded(
+                        flex: 1,
+                        child: _buildPostDetails(context, username, createdAt, likesCount, commentsCount, flagged, hidden),
+                      ),
                     ],
-                  ),
-                ],
-
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 16),
-
-                // Engagement Stats
-                Row(
-                  children: [
-                    Icon(Icons.favorite, size: 20, color: Colors.red[300]),
-                    const SizedBox(width: 4),
-                    Text('$likesCount likes', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                    const SizedBox(width: 24),
-                    Icon(Icons.comment, size: 20, color: Colors.blue[300]),
-                    const SizedBox(width: 4),
-                    Text('$commentsCount comments', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-
-                // Hidden Reason
-                if (hidden && widget.post['hideReason'] != null) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.orange[50],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange[200]!),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.visibility_off, size: 20, color: Colors.orange[700]),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Hidden: ${widget.post['hideReason']}',
-                            style: TextStyle(fontSize: 13, color: Colors.orange[900]),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Image Gallery (Mobile)
+                      if (imageUrls.isNotEmpty) ...[
+                        SizedBox(
+                          height: 300,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: imageUrls.length,
+                            itemBuilder: (context, index) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    imageUrls[index],
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      width: 300,
+                                      color: Colors.grey[300],
+                                      child: const Icon(Icons.broken_image, size: 48),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
+                        const SizedBox(height: 20),
                       ],
-                    ),
+                      // Post Details (Mobile)
+                      _buildPostDetails(context, username, createdAt, likesCount, commentsCount, flagged, hidden),
+                    ],
                   ),
-                ],
-
-                // Post ID
-                const SizedBox(height: 16),
-                SelectableText(
-                  'Post ID: ${widget.post['id']}',
-                  style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color, fontFamily: 'monospace'),
-                ),
-              ],
-            ),
           ),
         ),
 
@@ -931,6 +858,142 @@ class _PostDetailViewState extends State<_PostDetailView> {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPostDetails(BuildContext context, String username, String createdAt, int likesCount, int commentsCount, bool flagged, bool hidden) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Author & Status
+        Row(
+          children: [
+            CircleAvatar(
+              child: Text(username[0].toUpperCase()),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(username, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      if (flagged) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.warningColor,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('FLAGGED', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                      if (hidden) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.grey,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('HIDDEN', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(createdAt, style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const Divider(),
+        const SizedBox(height: 16),
+
+        // Content
+        Text(widget.post['content'] ?? '', style: const TextStyle(fontSize: 15, height: 1.4)),
+
+        // Hashtags
+        if (widget.post['hashtags'] != null && (widget.post['hashtags'] as List).isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: (widget.post['hashtags'] as List).map((tag) => 
+              Chip(
+                label: Text('#$tag'),
+                visualDensity: VisualDensity.compact,
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              )
+            ).toList(),
+          ),
+        ],
+
+        // Location
+        if (widget.post['location'] != null) ...[
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Icon(Icons.location_on, size: 16),
+              const SizedBox(width: 4),
+              Text(widget.post['location'], style: const TextStyle(fontSize: 13)),
+            ],
+          ),
+        ],
+
+        const SizedBox(height: 16),
+        const Divider(),
+        const SizedBox(height: 16),
+
+        // Engagement Stats
+        Row(
+          children: [
+            Icon(Icons.favorite, size: 20, color: Colors.red[300]),
+            const SizedBox(width: 4),
+            Text('$likesCount likes', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            const SizedBox(width: 24),
+            Icon(Icons.comment, size: 20, color: Colors.blue[300]),
+            const SizedBox(width: 4),
+            Text('$commentsCount comments', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          ],
+        ),
+
+        // Hidden Reason
+        if (hidden && widget.post['hideReason'] != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.visibility_off, size: 20, color: Colors.orange[700]),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Hidden: ${widget.post['hideReason']}',
+                    style: TextStyle(fontSize: 13, color: Colors.orange[900]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        // Post ID
+        const SizedBox(height: 16),
+        SelectableText(
+          'Post ID: ${widget.post['id']}',
+          style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color, fontFamily: 'monospace'),
         ),
       ],
     );

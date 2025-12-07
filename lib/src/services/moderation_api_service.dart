@@ -250,10 +250,14 @@ class ModerationApiService {
     if (response.statusCode != 200) throw Exception('Failed to delete user');
   }
 
-  Future<void> hideUser({required String userId}) async {
+  Future<void> hideUser({required String userId, String? reason}) async {
     final url = Uri.parse('$_baseUrl/api/moderation/users/$userId/hide');
     final headers = await _headers();
-    final response = await _http.post(url, headers: headers);
+    final response = await _http.post(
+      url,
+      headers: headers,
+      body: jsonEncode({'reason': reason}),
+    );
     if (response.statusCode != 200) throw Exception('Failed to hide user');
   }
 

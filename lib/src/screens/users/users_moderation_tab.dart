@@ -251,6 +251,7 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                       itemBuilder: (context, index) {
                         final user = _users[index];
                         final banned = user['banned'] == true;
+                        final hidden = user['hidden'] == true;
                         
                         return Card(
                           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -300,6 +301,24 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                                               ),
                                               child: const Text(
                                                 'BANNED',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          if (hidden) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.warningColor,
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: const Text(
+                                                'HIDDEN',
                                                 style: TextStyle(
                                                   color: Colors.white,
                                                   fontSize: 10,
@@ -444,35 +463,39 @@ class _UserDetailViewState extends State<_UserDetailView> {
   }
 
   Future<void> _hideUser() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hide User'),
-        content: const Text('This will hide all of the user\'s posts and content. Continue?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCEL'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.warningColor),
-            child: const Text('HIDE'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
+    final reason = await _showReasonDialog('Hide User', 'Enter reason for hiding this user:');
+    if (reason == null || reason.isEmpty) return;
 
     setState(() => _processing = true);
     try {
-      await _moderationApi.hideUser(userId: widget.user['id']);
+      await _moderationApi.hideUser(userId: widget.user['id'], reason: reason);
       if (mounted) {
         Navigator.pop(context);
         widget.onUpdate();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('User and all content hidden'), backgroundColor: AppTheme.warningColor),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
+  }
+
+  Future<void> _unhideUser() async {
+    setState(() => _processing = true);
+    try {
+      await _moderationApi.unhideUser(userId: widget.user['id']);
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onUpdate();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User and all content restored'), backgroundColor: AppTheme.successColor),
         );
       }
     } catch (e) {
@@ -555,6 +578,7 @@ class _UserDetailViewState extends State<_UserDetailView> {
   @override
   Widget build(BuildContext context) {
     final banned = widget.user['banned'] == true;
+    final hidden = widget.user['hidden'] == true;
     final createdAt = _formatTimestamp(widget.user['created_at'] ?? widget.user['createdAt']);
     final photoUrl = widget.user['avatar_url'];
     final username = widget.user['username'] ?? 'No username';
@@ -586,7 +610,7 @@ class _UserDetailViewState extends State<_UserDetailView> {
                       const SizedBox(width: 24),
                       // Right side - Detailed info
                       Expanded(
-                        child: _buildDetailedInfo(bio, banned),
+                        child: _buildDetailedInfo(bio, banned, hidden),
                       ),
                     ],
                   )
@@ -594,7 +618,7 @@ class _UserDetailViewState extends State<_UserDetailView> {
                     children: [
                       _buildUserCard(photoUrl, username, email, banned, createdAt),
                       const SizedBox(height: 24),
-                      _buildDetailedInfo(bio, banned),
+                      _buildDetailedInfo(bio, banned, hidden),
                     ],
                   ),
           ),
@@ -639,17 +663,30 @@ class _UserDetailViewState extends State<_UserDetailView> {
                   ),
                 ),
               const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _processing ? null : _hideUser,
-                  icon: const Icon(Icons.visibility_off),
-                  label: const Text('Hide User'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.warningColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+              if (!hidden)
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _processing ? null : _hideUser,
+                    icon: const Icon(Icons.visibility_off),
+                    label: const Text('Hide User'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.warningColor,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
                   ),
                 ),
-              ),
+              if (hidden)
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _processing ? null : _unhideUser,
+                    icon: const Icon(Icons.visibility),
+                    label: const Text('Unhide User'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.successColor,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
@@ -749,6 +786,8 @@ class _UserDetailViewState extends State<_UserDetailView> {
             // Signup Date
             _buildInfoRow(Icons.calendar_today, 'Joined', createdAt),
             const SizedBox(height: 8),
+            _buildInfoRow(Icons.access_time, 'Last Active', _formatTimestamp(widget.user['last_login'] ?? widget.user['lastLogin'] ?? widget.user['updated_at'])),
+            const SizedBox(height: 8),
             _buildInfoRow(Icons.fingerprint, 'User ID', widget.user['id'] ?? 'Unknown'),
             const SizedBox(height: 16),
             const Divider(),
@@ -804,7 +843,7 @@ class _UserDetailViewState extends State<_UserDetailView> {
     );
   }
 
-  Widget _buildDetailedInfo(String bio, bool banned) {
+  Widget _buildDetailedInfo(String bio, bool banned, bool hidden) {
     final postsCount = widget.user['postsCount'] ?? 0;
     final followersCount = widget.user['followersCount'] ?? 0;
     final followingCount = widget.user['followingCount'] ?? 0;
@@ -892,6 +931,45 @@ class _UserDetailViewState extends State<_UserDetailView> {
                 Text(
                   widget.user['banReason'],
                   style: TextStyle(fontSize: 14, color: Colors.red[900]),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        // Hide Info
+        if (hidden && widget.user['hideReason'] != null) ...[
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange[200]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.visibility_off, color: Colors.orange[700], size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Hide Reason',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.orange[900],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  widget.user['hideReason'],
+                  style: TextStyle(fontSize: 14, color: Colors.orange[900]),
                 ),
               ],
             ),

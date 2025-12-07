@@ -443,6 +443,91 @@ class _UserDetailViewState extends State<_UserDetailView> {
     }
   }
 
+  Future<void> _hideUser() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hide User'),
+        content: const Text('This will hide all of the user\'s posts and content. Continue?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.warningColor),
+            child: const Text('HIDE'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _processing = true);
+    try {
+      // You'll need to add this endpoint to your moderation API
+      // For now, we'll just show a message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Hide user feature - API endpoint needed')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
+  }
+
+  Future<void> _deleteUser() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete User'),
+        content: const Text('PERMANENTLY delete this user and all their data? This CANNOT be undone!'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _processing = true);
+    try {
+      await _moderationApi.deleteUser(userId: widget.user['id']);
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onUpdate();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User deleted'), backgroundColor: AppTheme.errorColor),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
+  }
+
   Future<String?> _showReasonDialog(String title, String hint) async {
     final controller = TextEditingController();
     return showDialog<String>(
@@ -469,7 +554,7 @@ class _UserDetailViewState extends State<_UserDetailView> {
   @override
   Widget build(BuildContext context) {
     final banned = widget.user['banned'] == true;
-    final createdAt = _formatTimestamp(widget.user['createdAt']);
+    final createdAt = _formatTimestamp(widget.user['created_at'] ?? widget.user['createdAt']);
     final photoUrl = widget.user['avatar_url'];
     final username = widget.user['username'] ?? 'No username';
     final email = widget.user['email'] ?? 'No email';
@@ -552,6 +637,30 @@ class _UserDetailViewState extends State<_UserDetailView> {
                     ),
                   ),
                 ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _processing ? null : _hideUser,
+                  icon: const Icon(Icons.visibility_off),
+                  label: const Text('Hide User'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.warningColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _processing ? null : _deleteUser,
+                  icon: const Icon(Icons.delete_forever),
+                  label: const Text('Delete User'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[900],
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

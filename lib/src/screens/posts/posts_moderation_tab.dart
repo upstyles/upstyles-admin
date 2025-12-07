@@ -336,6 +336,28 @@ class _PostCard extends StatelessWidget {
     }
   }
 
+  String _formatFullDateTime(dynamic timestamp) {
+    if (timestamp == null) return 'Unknown';
+    try {
+      DateTime date;
+      if (timestamp is Map && timestamp.containsKey('_seconds')) {
+        date = DateTime.fromMillisecondsSinceEpoch(timestamp['_seconds'] * 1000);
+      } else if (timestamp is String) {
+        date = DateTime.parse(timestamp);
+      } else {
+        return 'Unknown';
+      }
+      
+      final hour = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+      final amPm = date.hour >= 12 ? 'PM' : 'AM';
+      final minute = date.minute.toString().padLeft(2, '0');
+      
+      return '${date.month}/${date.day}/${date.year} at $hour:$minute $amPm';
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final hidden = post['hidden'] == true;
@@ -345,6 +367,7 @@ class _PostCard extends StatelessWidget {
     final likesCount = post['likesCount'] ?? 0;
     final commentsCount = post['commentsCount'] ?? 0;
     final createdAt = _formatTimestamp(post['createdAt']);
+    final fullDateTime = _formatFullDateTime(post['createdAt']);
 
     return Card(
       child: Column(
@@ -354,14 +377,17 @@ class _PostCard extends StatelessWidget {
           if (imageUrls.isNotEmpty)
             Stack(
               children: [
-                AspectRatio(
-                  aspectRatio: 1,
-                  child: Image.network(
-                    imageUrls.first,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.broken_image, size: 48),
+                InkWell(
+                  onTap: onTap,
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: Image.network(
+                      imageUrls.first,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.broken_image, size: 48),
+                      ),
                     ),
                   ),
                 ),
@@ -421,6 +447,17 @@ class _PostCard extends StatelessWidget {
                                 color: Theme.of(context).textTheme.bodySmall?.color,
                               ),
                             ),
+                            Tooltip(
+                              message: fullDateTime,
+                              child: Text(
+                                fullDateTime,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -462,7 +499,7 @@ class _PostCard extends StatelessWidget {
                   
                   const SizedBox(height: 8),
                   
-                  // Engagement stats
+                  // Engagement stats and Post ID
                   Row(
                     children: [
                       Icon(Icons.favorite, size: 14, color: Colors.red[300]),
@@ -472,6 +509,15 @@ class _PostCard extends StatelessWidget {
                       Icon(Icons.comment, size: 14, color: Colors.blue[300]),
                       const SizedBox(width: 4),
                       Text('$commentsCount', style: const TextStyle(fontSize: 12)),
+                      const Spacer(),
+                      Tooltip(
+                        message: 'Post ID: ${post['id']}',
+                        child: Icon(
+                          Icons.info_outline,
+                          size: 14,
+                          color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5),
+                        ),
+                      ),
                     ],
                   ),
                 ],

@@ -10,6 +10,7 @@ import '../posts/posts_moderation_tab.dart';
 import '../reports/reports_moderation_tab.dart';
 import '../audit/audit_log_tab.dart';
 import '../../providers/theme_provider.dart';
+import '../../widgets/theme_settings_dialog.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -124,38 +125,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _showThemeDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Theme Settings'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.light_mode),
-              title: const Text('Light Mode'),
-              onTap: () {
-                context.read<ThemeProvider>().setThemeMode(ThemeMode.light);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.dark_mode),
-              title: const Text('Dark Mode'),
-              onTap: () {
-                context.read<ThemeProvider>().setThemeMode(ThemeMode.dark);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings_system_daydream),
-              title: const Text('System Default'),
-              onTap: () {
-                context.read<ThemeProvider>().setThemeMode(ThemeMode.system);
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-      ),
+      builder: (context) => const ThemeSettingsDialog(),
     );
   }
 }

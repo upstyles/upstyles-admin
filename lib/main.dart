@@ -38,8 +38,8 @@ class UpStylesAdminApp extends StatelessWidget {
           return MaterialApp.router(
             title: 'UpStyles Admin',
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
+            theme: themeProvider.getLightTheme(),
+            darkTheme: themeProvider.getDarkTheme(),
             themeMode: themeProvider.themeMode,
             routerConfig: _router,
           );

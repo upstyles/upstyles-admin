@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/moderation_api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/section_header.dart';
 
 class PostsModerationTab extends StatefulWidget {
   const PostsModerationTab({super.key});
@@ -133,72 +134,61 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
     return Column(
       children: [
         // Header
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.spaceBetween,
-            children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text('Posts', style: TextStyle(fontSize: isDesktop ? 18 : 16, fontWeight: FontWeight.w600)),
-                  if (_batchMode && _selectedPosts.isNotEmpty)
-                    Chip(
-                      label: Text('${_selectedPosts.length} selected'),
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                    ),
-                ],
+        SectionHeader(
+          title: 'Posts',
+          trailing: _batchMode && _selectedPosts.isNotEmpty
+              ? Chip(
+                  label: Text('${_selectedPosts.length} selected'),
+                  visualDensity: VisualDensity.compact,
+                )
+              : null,
+          actions: [
+            if (_batchMode && _selectedPosts.isNotEmpty) ...[
+              FilledButton.icon(
+                onPressed: _batchHidePosts,
+                icon: const Icon(Icons.visibility_off, size: 18),
+                label: Text(isDesktop ? 'Hide Selected' : 'Hide'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.warningColor,
+                ),
               ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (_batchMode && _selectedPosts.isNotEmpty) ...[
-                    ElevatedButton.icon(
-                      onPressed: _batchHidePosts,
-                      icon: const Icon(Icons.visibility_off, size: 18),
-                      label: Text(isDesktop ? 'Hide Selected' : 'Hide'),
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.warningColor),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: _batchDeletePosts,
-                      icon: const Icon(Icons.delete, size: 18),
-                      label: Text(isDesktop ? 'Delete Selected' : 'Delete'),
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
-                    ),
-                  ],
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _batchMode = !_batchMode;
-                        if (!_batchMode) _selectedPosts.clear();
-                      });
-                    },
-                    icon: Icon(_batchMode ? Icons.close : Icons.checklist, size: 18),
-                    label: Text(_batchMode ? 'Exit Batch' : 'Batch Mode'),
-                  ),
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(value: false, label: Text('All')),
-                      ButtonSegment(value: true, label: Text('Flagged')),
-                    ],
-                    selected: {_flaggedOnly},
-                    onSelectionChanged: (Set<bool> newSelection) {
-                      setState(() => _flaggedOnly = newSelection.first);
-                      _loadPosts();
-                    },
-                  ),
-                  IconButton(icon: const Icon(Icons.refresh), onPressed: _loadPosts, tooltip: 'Refresh'),
-                ],
+              FilledButton.icon(
+                onPressed: _batchDeletePosts,
+                icon: const Icon(Icons.delete, size: 18),
+                label: Text(isDesktop ? 'Delete Selected' : 'Delete'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.errorColor,
+                ),
               ),
             ],
-          ),
+            OutlinedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _batchMode = !_batchMode;
+                  if (!_batchMode) _selectedPosts.clear();
+                });
+              },
+              icon: Icon(_batchMode ? Icons.close : Icons.checklist, size: 18),
+              label: Text(_batchMode ? 'Exit Batch' : 'Batch Mode'),
+            ),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('All')),
+                ButtonSegment(value: true, label: Text('Flagged')),
+              ],
+              selected: {_flaggedOnly},
+              onSelectionChanged: (Set<bool> newSelection) {
+                setState(() => _flaggedOnly = newSelection.first);
+                _loadPosts();
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadPosts,
+              tooltip: 'Refresh',
+            ),
+          ],
         ),
-        const Divider(height: 1),
         // Posts List
         Expanded(
           child: _loading

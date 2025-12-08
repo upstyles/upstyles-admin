@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 import 'src/screens/auth/login_screen.dart';
 import 'src/screens/dashboard/dashboard_screen.dart';
-import 'src/theme/app_theme.dart';
 import 'src/providers/theme_provider.dart';
 
 void main() async {

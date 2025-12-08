@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/moderation_api_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/section_header.dart';
 
 class AuditLogTab extends StatefulWidget {
   const AuditLogTab({super.key});

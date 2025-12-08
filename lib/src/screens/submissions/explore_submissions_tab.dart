@@ -107,6 +107,7 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
     final customController = TextEditingController();
     bool useCustom = false;
 
+    if (!mounted) return null;
     return showDialog<String>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -120,7 +121,7 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
                 const Text('Choose from existing collections:'),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: selectedCollectionId,
+                  initialValue: selectedCollectionId,
                   decoration: const InputDecoration(
                     labelText: 'Collection',
                     border: OutlineInputBorder(),
@@ -425,15 +426,14 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
           successCount++;
         } catch (e) {
           failCount++;
-          print('Failed to delete $submissionId: $e');
+          debugPrint('Failed to delete $submissionId: $e');
         }
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Deleted $successCount submission(s)' + 
-                         (failCount > 0 ? ', $failCount failed' : '')),
+            content: Text('Deleted $successCount submission(s)${failCount > 0 ? ", $failCount failed" : ""}'),
             backgroundColor: Colors.red,
           ),
         );

@@ -205,7 +205,7 @@ class _ThemeColorGrid extends StatelessWidget {
               boxShadow: [
                 if (isSelected)
                   BoxShadow(
-                    color: theme.color.withOpacity(0.5),
+                    color: theme.color.withValues(alpha: 0.5),
                     blurRadius: 8,
                     spreadRadius: 2,
                   ),

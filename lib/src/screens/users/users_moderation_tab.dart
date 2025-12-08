@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/moderation_api_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/section_header.dart';
 import '../../widgets/user_card_skeleton.dart';
 
 class UsersModerationTab extends StatefulWidget {
@@ -139,15 +139,12 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
       
       // Debug: Log user data to see what fields are available
       if (users.isNotEmpty) {
-        print('[Users] Total users loaded: ${users.length}');
-        print('[Users] Sample user data: ${users.first}');
-        final firstUser = users.first as Map;
-        print('[Users] Available keys: ${firstUser.keys.toList()}');
-        print('[Users] Photo fields check:');
-        print('  - photoUrl: ${firstUser['photoUrl']}');
-        print('  - photoURL: ${firstUser['photoURL']}');
-        print('  - profileImageUrl: ${firstUser['profileImageUrl']}');
-        print('  - profilePhoto: ${firstUser['profilePhoto']}');
+        debugPrint('[Users] Total users loaded: ${users.length}');
+        if (kDebugMode) {
+          debugPrint('[Users] Sample user data: ${users.first}');
+          final firstUser = users.first as Map;
+          debugPrint('[Users] Available keys: ${firstUser.keys.toList()}');
+        }
       }
       
       if (mounted) {
@@ -162,106 +159,6 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
         setState(() => _loading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading users: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _banUser(dynamic user) async {
-    final reason = await _showReasonDialog('Ban User', 'Enter ban reason:');
-    if (reason == null || reason.isEmpty) return;
-
-    try {
-      await _moderationApi.banUser(userId: user['id'], reason: reason);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User banned'), backgroundColor: Colors.red),
-        );
-        _loadUsers();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _unbanUser(dynamic user) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Unban User'),
-        content: Text('Unban ${user['username'] ?? user['email']}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCEL'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('UNBAN'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await _moderationApi.unbanUser(userId: user['id']);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User unbanned'), backgroundColor: AppTheme.successColor),
-        );
-        _loadUsers();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _deleteUser(dynamic user) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete User'),
-        content: Text(
-          'Permanently delete ${user['username'] ?? user['email']} and ALL their content? This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCEL'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
-            child: const Text('DELETE'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      await _moderationApi.deleteUser(userId: user['id']);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User deleted'), backgroundColor: AppTheme.errorColor),
-        );
-        _loadUsers();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
         );
       }
     }
@@ -377,7 +274,7 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                   SizedBox(
                     width: 130,
                     child: DropdownButtonFormField<String>(
-                      value: _statusFilter,
+                      initialValue: _statusFilter,
                       decoration: const InputDecoration(
                         labelText: 'Status',
                         border: OutlineInputBorder(),
@@ -399,7 +296,7 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                   SizedBox(
                     width: 150,
                     child: DropdownButtonFormField<String>(
-                      value: _sortBy,
+                      initialValue: _sortBy,
                       decoration: const InputDecoration(
                         labelText: 'Sort By',
                         border: OutlineInputBorder(),
@@ -749,7 +646,6 @@ class _UserDetailView extends StatefulWidget {
 class _UserDetailViewState extends State<_UserDetailView> {
   final _moderationApi = ModerationApiService();
   bool _processing = false;
-  bool _loadingDetails = false;
   List<dynamic> _recentPosts = [];
   List<dynamic> _moderationHistory = [];
   int _reportsCount = 0;
@@ -761,7 +657,6 @@ class _UserDetailViewState extends State<_UserDetailView> {
   }
 
   Future<void> _loadUserDetails() async {
-    setState(() => _loadingDetails = true);
     try {
       final response = await _moderationApi.getUserDetails(userId: widget.user['id']);
       if (mounted) {
@@ -769,14 +664,10 @@ class _UserDetailViewState extends State<_UserDetailView> {
           _recentPosts = response['recentPosts'] ?? [];
           _moderationHistory = response['moderationHistory'] ?? [];
           _reportsCount = response['stats']?['reports'] ?? 0;
-          _loadingDetails = false;
         });
       }
     } catch (e) {
-      print('[UserDetail] Error loading details: $e');
-      if (mounted) {
-        setState(() => _loadingDetails = false);
-      }
+      debugPrint('[UserDetail] Error loading details: $e');
     }
   }
 
@@ -1017,7 +908,7 @@ class _UserDetailViewState extends State<_UserDetailView> {
             color: Theme.of(context).cardColor,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 4,
                 offset: const Offset(0, -2),
               ),
@@ -1095,8 +986,8 @@ class _UserDetailViewState extends State<_UserDetailView> {
 
   Widget _buildUserCard(String? photoUrl, String username, String email, bool banned, String createdAt) {
     // Debug logging
-    if (photoUrl != null) {
-      print('[UserDetail] Photo URL: $photoUrl');
+    if (kDebugMode && photoUrl != null) {
+      debugPrint('[UserDetail] Photo URL: $photoUrl');
     }
     
     return Card(
@@ -1113,7 +1004,7 @@ class _UserDetailViewState extends State<_UserDetailView> {
                   : null,
               onBackgroundImageError: photoUrl != null
                   ? (exception, stackTrace) {
-                      print('[UserDetail] Error loading avatar: $exception');
+                      debugPrint('[UserDetail] Error loading avatar: $exception');
                     }
                   : null,
               child: photoUrl == null || photoUrl.isEmpty
@@ -1465,9 +1356,9 @@ class _UserDetailViewState extends State<_UserDetailView> {
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.05),
+                color: color.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: color.withOpacity(0.2)),
+                border: Border.all(color: color.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [
@@ -1585,9 +1476,9 @@ class _UserDetailViewState extends State<_UserDetailView> {
       width: 130,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -1606,7 +1497,7 @@ class _UserDetailViewState extends State<_UserDetailView> {
             label,
             style: TextStyle(
               fontSize: 12,
-              color: color.withOpacity(0.8),
+              color: color.withValues(alpha: 0.8),
             ),
           ),
         ],

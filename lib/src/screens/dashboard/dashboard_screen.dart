@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
 import '../submissions/explore_submissions_tab.dart';
 import '../analytics/analytics_tab.dart';
@@ -9,7 +8,6 @@ import '../users/users_moderation_tab.dart';
 import '../posts/posts_moderation_tab.dart';
 import '../reports/reports_moderation_tab.dart';
 import '../audit/audit_log_tab.dart';
-import '../../providers/theme_provider.dart';
 import '../../widgets/theme_settings_dialog.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -91,7 +89,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 end: Alignment.bottomRight,
                 colors: [
                   Theme.of(context).colorScheme.surface,
-                  Theme.of(context).colorScheme.surface.withOpacity(0.8),
+                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
                 ],
               ),
               border: Border(
@@ -160,7 +158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                     tooltip: _isRailCollapsed ? 'Expand sidebar' : 'Collapse sidebar',
                     style: IconButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
                       padding: const EdgeInsets.all(8),
                     ),
                   ),

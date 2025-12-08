@@ -18,6 +18,7 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
   String? _errorMessage;
   String _filterStatus = 'pending';
   bool _bulkMode = false;
+  String _viewMode = 'grid'; // 'grid' or 'list'
   
   @override
   void initState() {
@@ -518,6 +519,18 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
                 },
               ),
               const Spacer(),
+              // View mode toggle
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'grid', label: Text('Grid'), icon: Icon(Icons.grid_view, size: 16)),
+                  ButtonSegment(value: 'list', label: Text('List'), icon: Icon(Icons.view_list, size: 16)),
+                ],
+                selected: {_viewMode},
+                onSelectionChanged: (Set<String> newSelection) {
+                  setState(() => _viewMode = newSelection.first);
+                },
+              ),
+              const SizedBox(width: 8),
               // Batch mode toggle
               TextButton.icon(
                 onPressed: () {

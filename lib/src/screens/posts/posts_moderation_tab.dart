@@ -656,12 +656,15 @@ class _PostListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final username = post['username'] ?? post['authorUsername'] ?? 'Unknown User';
-    final caption = post['caption'] ?? '';
-    final photoUrl = post['photo_url'] ?? post['photoUrl'] ?? post['photoURL'];
+    final username = post['username'] ?? post['authorUsername'] ?? 'User ${post['authorId'] ?? ''}';
+    final content = post['content'] ?? post['caption'] ?? '';
+    final imageUrls = (post['imageUrls'] as List?)?.cast<String>() ?? [];
+    final photoUrl = imageUrls.isNotEmpty ? imageUrls.first : null;
     final flagged = post['flagged'] == true;
     final hidden = post['hidden'] == true;
-    final createdAt = _formatTimestamp(post['created_at'] ?? post['createdAt']);
+    final createdAt = _formatTimestamp(post['createdAt'] ?? post['created_at']);
+    final likesCount = post['likesCount'] ?? 0;
+    final commentsCount = post['commentsCount'] ?? 0;
     
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -724,13 +727,32 @@ class _PostListItem extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    if (caption.isNotEmpty)
+                    if (content.isNotEmpty)
                       Text(
-                        caption,
+                        content,
                         style: const TextStyle(fontSize: 14),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
+                    const SizedBox(height: 8),
+                    // Engagement stats
+                    Row(
+                      children: [
+                        Icon(Icons.favorite, size: 14, color: Colors.red[300]),
+                        const SizedBox(width: 4),
+                        Text('$likesCount', style: const TextStyle(fontSize: 12)),
+                        const SizedBox(width: 12),
+                        Icon(Icons.comment, size: 14, color: Colors.blue[300]),
+                        const SizedBox(width: 4),
+                        Text('$commentsCount', style: const TextStyle(fontSize: 12)),
+                        if (imageUrls.length > 1) ...[
+                          const SizedBox(width: 12),
+                          Icon(Icons.image, size: 14, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Text('${imageUrls.length}', style: const TextStyle(fontSize: 12)),
+                        ],
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     Row(
                       children: [

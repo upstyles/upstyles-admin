@@ -109,7 +109,7 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
       context: context,
       builder: (context) => Dialog(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
+          constraints: const BoxConstraints(maxWidth: 1200, maxHeight: 800),
           child: _PostDetailView(post: post, onRefresh: _loadPosts),
         ),
       ),

@@ -22,6 +22,7 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
   Set<String> _selectedUserIds = {};
   bool _selectAll = false;
   bool _batchMode = false;
+  String _viewMode = 'list'; // 'grid' or 'list'
 
   @override
   void initState() {
@@ -361,6 +362,18 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                     ),
                   ),
                   const SizedBox(width: 12),
+                  // View mode toggle
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'grid', label: Text('Grid'), icon: Icon(Icons.grid_view, size: 16)),
+                      ButtonSegment(value: 'list', label: Text('List'), icon: Icon(Icons.view_list, size: 16)),
+                    ],
+                    selected: {_viewMode},
+                    onSelectionChanged: (Set<String> newSelection) {
+                      setState(() => _viewMode = newSelection.first);
+                    },
+                  ),
+                  const SizedBox(width: 12),
                   SizedBox(
                     width: 130,
                     child: DropdownButtonFormField<String>(
@@ -472,7 +485,115 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                 )
               : _users.isEmpty
                   ? const Center(child: Text('No users found'))
-                  : ListView.builder(
+                  : _viewMode == 'grid'
+                      ? LayoutBuilder(
+                          builder: (context, constraints) {
+                            final crossAxisCount = constraints.maxWidth > 1200 ? 3 : constraints.maxWidth > 800 ? 2 : 1;
+                            return GridView.builder(
+                              padding: const EdgeInsets.all(16),
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                                childAspectRatio: 1.5,
+                              ),
+                              itemCount: _users.length,
+                              itemBuilder: (context, index) {
+                                final user = _users[index];
+                                final banned = user['banned'] == true;
+                                final hidden = user['hidden'] == true;
+                                final userId = user['id']?.toString() ?? '';
+                                final isSelected = _selectedUserIds.contains(userId);
+                                
+                                return Card(
+                                  child: InkWell(
+                                    onTap: () => _showUserDetails(user),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              if (_batchMode)
+                                                Checkbox(
+                                                  value: isSelected,
+                                                  onChanged: (value) => _toggleUserSelection(userId),
+                                                ),
+                                              CircleAvatar(
+                                                radius: 24,
+                                                backgroundColor: AppTheme.primaryLight,
+                                                backgroundImage: user['avatar_url'] != null && user['avatar_url'].toString().isNotEmpty
+                                                    ? NetworkImage(user['avatar_url'])
+                                                    : null,
+                                                child: user['avatar_url'] == null || user['avatar_url'].toString().isEmpty
+                                                    ? Text(
+                                                        (user['username'] ?? user['email'] ?? 'U')[0].toUpperCase(),
+                                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                                      )
+                                                    : null,
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      user['username'] ?? 'No username',
+                                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    Text(
+                                                      user['email'] ?? 'No email',
+                                                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              if (banned)
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.errorColor,
+                                                    borderRadius: BorderRadius.circular(4),
+                                                  ),
+                                                  child: const Text('BANNED', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                                                ),
+                                              if (hidden)
+                                                Container(
+                                                  margin: const EdgeInsets.only(left: 4),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey,
+                                                    borderRadius: BorderRadius.circular(4),
+                                                  ),
+                                                  child: const Text('HIDDEN', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                                                ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            children: [
+                                              Icon(Icons.article, size: 14, color: Colors.blue[300]),
+                                              const SizedBox(width: 4),
+                                              Text('${user['posts_count'] ?? 0}', style: const TextStyle(fontSize: 12)),
+                                              const SizedBox(width: 16),
+                                              Icon(Icons.people, size: 14, color: Colors.green[300]),
+                                              const SizedBox(width: 4),
+                                              Text('${user['followers_count'] ?? 0}', style: const TextStyle(fontSize: 12)),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        )
+                      : ListView.builder(
                       itemCount: _users.length,
                       itemBuilder: (context, index) {
                         final user = _users[index];

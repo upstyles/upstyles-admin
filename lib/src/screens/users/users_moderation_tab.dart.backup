@@ -3,7 +3,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/moderation_api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/section_header.dart';
-import '../../widgets/user_card_skeleton.dart';
 
 class UsersModerationTab extends StatefulWidget {
   const UsersModerationTab({super.key});
@@ -18,113 +17,11 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
   bool _loading = true;
   String? _searchQuery;
   String _statusFilter = 'all';
-  String _sortBy = 'recent';
-  Set<String> _selectedUserIds = {};
-  bool _selectAll = false;
 
   @override
   void initState() {
     super.initState();
     _loadUsers();
-  }
-
-  void _sortUsers() {
-    setState(() {
-      switch (_sortBy) {
-        case 'recent':
-          _users.sort((a, b) {
-            final aDate = a['created_at'] ?? a['createdAt'];
-            final bDate = b['created_at'] ?? b['createdAt'];
-            if (aDate == null && bDate == null) return 0;
-            if (aDate == null) return 1;
-            if (bDate == null) return -1;
-            return DateTime.parse(bDate.toString()).compareTo(DateTime.parse(aDate.toString()));
-          });
-          break;
-        case 'posts':
-          _users.sort((a, b) {
-            final aPosts = a['posts_count'] ?? a['postsCount'] ?? 0;
-            final bPosts = b['posts_count'] ?? b['postsCount'] ?? 0;
-            return (bPosts as int).compareTo(aPosts as int);
-          });
-          break;
-        case 'username':
-          _users.sort((a, b) {
-            final aName = (a['username'] ?? '').toString().toLowerCase();
-            final bName = (b['username'] ?? '').toString().toLowerCase();
-            return aName.compareTo(bName);
-          });
-          break;
-      }
-    });
-  }
-
-  void _toggleSelectAll() {
-    setState(() {
-      _selectAll = !_selectAll;
-      if (_selectAll) {
-        _selectedUserIds = _users.map((u) => u['id'].toString()).toSet();
-      } else {
-        _selectedUserIds.clear();
-      }
-    });
-  }
-
-  void _toggleUserSelection(String userId) {
-    setState(() {
-      if (_selectedUserIds.contains(userId)) {
-        _selectedUserIds.remove(userId);
-      } else {
-        _selectedUserIds.add(userId);
-      }
-      _selectAll = _selectedUserIds.length == _users.length;
-    });
-  }
-
-  Future<void> _batchBan() async {
-    if (_selectedUserIds.isEmpty) return;
-    final reason = await _showReasonDialog('Batch Ban', 'Reason for banning ${_selectedUserIds.length} users:');
-    if (reason == null || reason.isEmpty) return;
-    try {
-      for (final userId in _selectedUserIds) {
-        await _moderationApi.banUser(userId: userId, reason: reason);
-      }
-      if (mounted) {
-        final count = _selectedUserIds.length;
-        setState(() => _selectedUserIds.clear());
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$count users banned'), backgroundColor: AppTheme.errorColor),
-        );
-        _loadUsers();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    }
-  }
-
-  Future<void> _batchHide() async {
-    if (_selectedUserIds.isEmpty) return;
-    final reason = await _showReasonDialog('Batch Hide', 'Reason for hiding ${_selectedUserIds.length} users:');
-    if (reason == null || reason.isEmpty) return;
-    try {
-      for (final userId in _selectedUserIds) {
-        await _moderationApi.hideUser(userId: userId, reason: reason);
-      }
-      if (mounted) {
-        final count = _selectedUserIds.length;
-        setState(() => _selectedUserIds.clear());
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$count users hidden'), backgroundColor: AppTheme.warningColor),
-        );
-        _loadUsers();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    }
   }
 
   Future<void> _loadUsers() async {
@@ -153,7 +50,6 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
           _users = users;
           _loading = false;
         });
-        _sortUsers();
       }
     } catch (e) {
       if (mounted) {
@@ -307,148 +203,47 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
               ),
             ),
           ),
-          child: Column(
+          child: Row(
             children: [
-              Row(
-                children: [
-                  // Select all checkbox
-                  Checkbox(
-                    value: _selectAll,
-                    onChanged: (value) => _toggleSelectAll(),
+              Expanded(
+                child: TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Search users by username or email...',
+                    prefixIcon: Icon(Icons.search),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _selectedUserIds.isEmpty 
-                        ? 'Select all'
-                        : '${_selectedUserIds.length} selected',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Search users...',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                        isDense: true,
-                      ),
-                      onChanged: (value) {
-                        setState(() => _searchQuery = value.isEmpty ? null : value);
-                      },
-                      onSubmitted: (value) => _loadUsers(),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 130,
-                    child: DropdownButtonFormField<String>(
-                      value: _statusFilter,
-                      decoration: const InputDecoration(
-                        labelText: 'Status',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        isDense: true,
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'all', child: Text('All')),
-                        DropdownMenuItem(value: 'banned', child: Text('Banned')),
-                        DropdownMenuItem(value: 'active', child: Text('Active')),
-                      ],
-                      onChanged: (value) {
-                        setState(() => _statusFilter = value!);
-                        _loadUsers();
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 150,
-                    child: DropdownButtonFormField<String>(
-                      value: _sortBy,
-                      decoration: const InputDecoration(
-                        labelText: 'Sort By',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        isDense: true,
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'recent', child: Text('Most Recent')),
-                        DropdownMenuItem(value: 'posts', child: Text('Most Posts')),
-                        DropdownMenuItem(value: 'username', child: Text('A-Z')),
-                      ],
-                      onChanged: (value) {
-                        setState(() => _sortBy = value!);
-                        _sortUsers();
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: _loadUsers,
-                    tooltip: 'Refresh',
-                  ),
+                  onSubmitted: (value) {
+                    setState(() => _searchQuery = value.isEmpty ? null : value);
+                    _loadUsers();
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'all', label: Text('All')),
+                  ButtonSegment(value: 'banned', label: Text('Banned')),
                 ],
+                selected: {_statusFilter},
+                onSelectionChanged: (Set<String> newSelection) {
+                  setState(() => _statusFilter = newSelection.first);
+                  _loadUsers();
+                },
+              ),
+              const SizedBox(width: 16),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: _loadUsers,
+                tooltip: 'Refresh',
               ),
             ],
           ),
         ),
         const Divider(height: 1),
-        
-        // Batch action bar
-        if (_selectedUserIds.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryLight,
-              border: Border(
-                bottom: BorderSide(color: Theme.of(context).dividerColor),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, size: 20, color: AppTheme.primaryColor),
-                const SizedBox(width: 12),
-                Text(
-                  '${_selectedUserIds.length} user${_selectedUserIds.length != 1 ? 's' : ''} selected',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () => setState(() => _selectedUserIds.clear()),
-                  icon: const Icon(Icons.clear, size: 18),
-                  label: const Text('Clear'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: _batchHide,
-                  icon: const Icon(Icons.visibility_off, size: 18),
-                  label: const Text('Hide'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.warningColor,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: _batchBan,
-                  icon: const Icon(Icons.block, size: 18),
-                  label: const Text('Ban'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.errorColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
 
         // Users list
         Expanded(
           child: _loading
-              ? ListView.builder(
-                  itemCount: 8,
-                  itemBuilder: (context, index) => const UserCardSkeleton(),
-                )
+              ? const Center(child: CircularProgressIndicator())
               : _users.isEmpty
                   ? const Center(child: Text('No users found'))
                   : ListView.builder(
@@ -457,8 +252,6 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                         final user = _users[index];
                         final banned = user['banned'] == true;
                         final hidden = user['hidden'] == true;
-                        final userId = user['id']?.toString() ?? '';
-                        final isSelected = _selectedUserIds.contains(userId);
                         
                         return Card(
                           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -468,12 +261,6 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                               padding: const EdgeInsets.all(16),
                               child: Row(
                               children: [
-                                // Checkbox
-                                Checkbox(
-                                  value: isSelected,
-                                  onChanged: (value) => _toggleUserSelection(userId),
-                                ),
-                                const SizedBox(width: 8),
                                 // Avatar
                                 CircleAvatar(
                                   radius: 24,

@@ -17,6 +17,7 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
   bool _flaggedOnly = false;
   bool _batchMode = false;
   Set<String> _selectedPosts = {};
+  String _viewMode = 'grid'; // 'grid' or 'list'
 
   @override
   void initState() {
@@ -231,6 +232,17 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
               icon: Icon(_batchMode ? Icons.close : Icons.checklist, size: 18),
               label: Text(_batchMode ? 'Exit Batch' : 'Batch Mode'),
             ),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'grid', label: Text('Grid'), icon: Icon(Icons.grid_view, size: 16)),
+                ButtonSegment(value: 'list', label: Text('List'), icon: Icon(Icons.view_list, size: 16)),
+              ],
+              selected: {_viewMode},
+              onSelectionChanged: (Set<String> newSelection) {
+                setState(() => _viewMode = newSelection.first);
+              },
+            ),
+            const SizedBox(width: 8),
             SegmentedButton<bool>(
               segments: const [
                 ButtonSegment(value: false, label: Text('All')),
@@ -255,21 +267,13 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
               ? const Center(child: CircularProgressIndicator())
               : _posts.isEmpty
                   ? const Center(child: Text('No posts found'))
-                  : LayoutBuilder(
-                      builder: (context, constraints) {
-                        final crossAxisCount = constraints.maxWidth > 1200 ? 3 : constraints.maxWidth > 800 ? 2 : 1;
-                        return GridView.builder(
+                  : _viewMode == 'list'
+                      ? ListView.builder(
                           padding: const EdgeInsets.all(16),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: crossAxisCount,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 0.75,
-                          ),
                           itemCount: _posts.length,
                           itemBuilder: (context, index) {
                             final post = _posts[index];
-                            return _PostCard(
+                            return _PostListItem(
                               post: post,
                               batchMode: _batchMode,
                               isSelected: _selectedPosts.contains(post['id']),
@@ -286,9 +290,41 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
                               onQuickAction: (action) => _handleQuickAction(post['id'], action),
                             );
                           },
-                        );
-                      },
-                    ),
+                        )
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            final crossAxisCount = constraints.maxWidth > 1200 ? 3 : constraints.maxWidth > 800 ? 2 : 1;
+                            return GridView.builder(
+                              padding: const EdgeInsets.all(16),
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                                childAspectRatio: 0.75,
+                              ),
+                              itemCount: _posts.length,
+                              itemBuilder: (context, index) {
+                                final post = _posts[index];
+                                return _PostCard(
+                                  post: post,
+                                  batchMode: _batchMode,
+                                  isSelected: _selectedPosts.contains(post['id']),
+                                  onToggleSelect: () {
+                                    setState(() {
+                                      if (_selectedPosts.contains(post['id'])) {
+                                        _selectedPosts.remove(post['id']);
+                                      } else {
+                                        _selectedPosts.add(post['id']);
+                                      }
+                                    });
+                                  },
+                                  onTap: () => _showPostDetails(post),
+                                  onQuickAction: (action) => _handleQuickAction(post['id'], action),
+                                );
+                              },
+                            );
+                          },
+                        ),
         ),
       ],
     );
@@ -572,6 +608,216 @@ class _PostCard extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _PostListItem extends StatelessWidget {
+  final dynamic post;
+  final bool batchMode;
+  final bool isSelected;
+  final VoidCallback onToggleSelect;
+  final VoidCallback onTap;
+  final Function(String action) onQuickAction;
+
+  const _PostListItem({
+    required this.post,
+    required this.batchMode,
+    required this.isSelected,
+    required this.onToggleSelect,
+    required this.onTap,
+    required this.onQuickAction,
+  });
+
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return 'Unknown';
+    try {
+      DateTime date;
+      if (timestamp is Map && timestamp.containsKey('_seconds')) {
+        date = DateTime.fromMillisecondsSinceEpoch(timestamp['_seconds'] * 1000);
+      } else if (timestamp is String) {
+        date = DateTime.parse(timestamp);
+      } else {
+        return 'Unknown';
+      }
+      final now = DateTime.now();
+      final diff = now.difference(date);
+      
+      if (diff.inMinutes < 1) return 'Just now';
+      if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+      if (diff.inDays < 1) return '${diff.inHours}h ago';
+      if (diff.inDays < 7) return '${diff.inDays}d ago';
+      return '${date.month}/${date.day}/${date.year}';
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final username = post['username'] ?? post['authorUsername'] ?? 'Unknown User';
+    final caption = post['caption'] ?? '';
+    final photoUrl = post['photo_url'] ?? post['photoUrl'] ?? post['photoURL'];
+    final flagged = post['flagged'] == true;
+    final hidden = post['hidden'] == true;
+    final createdAt = _formatTimestamp(post['created_at'] ?? post['createdAt']);
+    
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: batchMode ? onToggleSelect : onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Checkbox in batch mode
+              if (batchMode)
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Checkbox(
+                    value: isSelected,
+                    onChanged: (_) => onToggleSelect(),
+                  ),
+                ),
+              // Thumbnail
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: photoUrl != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          photoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.image, size: 32),
+                        ),
+                      )
+                    : const Icon(Icons.image, size: 32),
+              ),
+              const SizedBox(width: 16),
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            username,
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          createdAt,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Theme.of(context).textTheme.bodySmall?.color,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (caption.isNotEmpty)
+                      Text(
+                        caption,
+                        style: const TextStyle(fontSize: 14),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        if (flagged)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.errorColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.flag, size: 12, color: AppTheme.errorColor),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Flagged',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.errorColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (hidden)
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.warningColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.visibility_off, size: 12, color: AppTheme.warningColor),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Hidden',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.warningColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // Quick actions
+              if (!batchMode)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: onQuickAction,
+                  itemBuilder: (context) => [
+                    if (!hidden)
+                      const PopupMenuItem(
+                        value: 'hide',
+                        child: Row(
+                          children: [
+                            Icon(Icons.visibility_off, size: 18, color: AppTheme.warningColor),
+                            SizedBox(width: 12),
+                            Text('Hide'),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, size: 18, color: AppTheme.errorColor),
+                          SizedBox(width: 12),
+                          Text('Delete'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -17,7 +17,9 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
   bool _flaggedOnly = false;
   bool _batchMode = false;
   Set<String> _selectedPosts = {};
-  String _viewMode = 'grid'; // 'grid' or 'list'
+  String _viewMode = 'list'; // 'grid' or 'list'
+  String _sortBy = 'recent'; // 'recent', 'likes', 'comments'
+  String? _searchQuery;
 
   @override
   void initState() {
@@ -35,6 +37,49 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
     });
   }
 
+  void _sortPosts() {
+    setState(() {
+      switch (_sortBy) {
+        case 'recent':
+          _posts.sort((a, b) {
+            final aDate = a['createdAt'] ?? a['created_at'];
+            final bDate = b['createdAt'] ?? b['created_at'];
+            if (aDate == null && bDate == null) return 0;
+            if (aDate == null) return 1;
+            if (bDate == null) return -1;
+            return DateTime.parse(bDate.toString()).compareTo(DateTime.parse(aDate.toString()));
+          });
+          break;
+        case 'likes':
+          _posts.sort((a, b) {
+            final aLikes = a['likesCount'] ?? 0;
+            final bLikes = b['likesCount'] ?? 0;
+            return (bLikes as int).compareTo(aLikes as int);
+          });
+          break;
+        case 'comments':
+          _posts.sort((a, b) {
+            final aComments = a['commentsCount'] ?? 0;
+            final bComments = b['commentsCount'] ?? 0;
+            return (bComments as int).compareTo(aComments as int);
+          });
+          break;
+      }
+    });
+  }
+
+  List<dynamic> _getFilteredPosts() {
+    if (_searchQuery == null || _searchQuery!.isEmpty) {
+      return _posts;
+    }
+    final query = _searchQuery!.toLowerCase();
+    return _posts.where((post) {
+      final content = (post['content'] ?? '').toString().toLowerCase();
+      final username = (post['username'] ?? '').toString().toLowerCase();
+      return content.contains(query) || username.contains(query);
+    }).toList();
+  }
+
   Future<void> _loadPosts() async {
     setState(() => _loading = true);
     try {
@@ -45,6 +90,7 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
           _loading = false;
           if (!_batchMode) _selectedPosts.clear();
         });
+        _sortPosts();
       }
     } catch (e) {
       if (mounted) {
@@ -204,6 +250,41 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
     final isDesktop = MediaQuery.of(context).size.width > 900;
     return Column(
       children: [
+        // Search and filters bar
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).dividerColor,
+                width: 1,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Search posts by content or username...',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    isDense: true,
+                  ),
+                  onChanged: (value) {
+                    setState(() => _searchQuery = value.isEmpty ? null : value);
+                  },
+                  onSubmitted: (value) {
+                    // Filter posts locally
+                    setState(() {});
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
         // Header
         SectionHeader(
           title: 'Posts',
@@ -260,6 +341,28 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
               },
             ),
             const SizedBox(width: 8),
+            SizedBox(
+              width: 150,
+              child: DropdownButtonFormField<String>(
+                value: _sortBy,
+                decoration: const InputDecoration(
+                  labelText: 'Sort By',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  isDense: true,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'recent', child: Text('Most Recent')),
+                  DropdownMenuItem(value: 'likes', child: Text('Most Likes')),
+                  DropdownMenuItem(value: 'comments', child: Text('Most Comments')),
+                ],
+                onChanged: (value) {
+                  setState(() => _sortBy = value!);
+                  _sortPosts();
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
             SegmentedButton<bool>(
               segments: const [
                 ButtonSegment(value: false, label: Text('All')),
@@ -282,14 +385,14 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : _posts.isEmpty
+              : _getFilteredPosts().isEmpty
                   ? const Center(child: Text('No posts found'))
                   : _viewMode == 'list'
                       ? ListView.builder(
                           padding: const EdgeInsets.all(16),
-                          itemCount: _posts.length,
+                          itemCount: _getFilteredPosts().length,
                           itemBuilder: (context, index) {
-                            final post = _posts[index];
+                            final post = _getFilteredPosts()[index];
                             return _PostListItem(
                               post: post,
                               batchMode: _batchMode,
@@ -319,9 +422,9 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
                                 mainAxisSpacing: 16,
                                 childAspectRatio: 0.75,
                               ),
-                              itemCount: _posts.length,
+                              itemCount: _getFilteredPosts().length,
                               itemBuilder: (context, index) {
-                                final post = _posts[index];
+                                final post = _getFilteredPosts()[index];
                                 return _PostCard(
                                   post: post,
                                   batchMode: _batchMode,

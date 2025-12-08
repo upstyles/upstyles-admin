@@ -21,6 +21,7 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
   String _sortBy = 'recent';
   Set<String> _selectedUserIds = {};
   bool _selectAll = false;
+  bool _batchMode = false;
 
   @override
   void initState() {
@@ -311,19 +312,21 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
             children: [
               Row(
                 children: [
-                  // Select all checkbox
-                  Checkbox(
-                    value: _selectAll,
-                    onChanged: (value) => _toggleSelectAll(),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _selectedUserIds.isEmpty 
-                        ? 'Select all'
-                        : '${_selectedUserIds.length} selected',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(width: 16),
+                  // Select all checkbox (only in batch mode)
+                  if (_batchMode) ...[
+                    Checkbox(
+                      value: _selectAll,
+                      onChanged: (value) => _toggleSelectAll(),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _selectedUserIds.isEmpty 
+                          ? 'Select all'
+                          : '${_selectedUserIds.length} selected',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(width: 16),
+                  ],
                   Expanded(
                     child: TextField(
                       decoration: const InputDecoration(
@@ -337,6 +340,24 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                         setState(() => _searchQuery = value.isEmpty ? null : value);
                       },
                       onSubmitted: (value) => _loadUsers(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Batch mode toggle
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _batchMode = !_batchMode;
+                        if (!_batchMode) {
+                          _selectedUserIds.clear();
+                          _selectAll = false;
+                        }
+                      });
+                    },
+                    icon: Icon(_batchMode ? Icons.close : Icons.checklist, size: 18),
+                    label: Text(_batchMode ? 'Exit Batch' : 'Batch Mode'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -397,7 +418,7 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
         const Divider(height: 1),
         
         // Batch action bar
-        if (_selectedUserIds.isNotEmpty)
+        if (_batchMode && _selectedUserIds.isNotEmpty)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -468,12 +489,14 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                               padding: const EdgeInsets.all(16),
                               child: Row(
                               children: [
-                                // Checkbox
-                                Checkbox(
-                                  value: isSelected,
-                                  onChanged: (value) => _toggleUserSelection(userId),
-                                ),
-                                const SizedBox(width: 8),
+                                // Checkbox (only in batch mode)
+                                if (_batchMode) ...[
+                                  Checkbox(
+                                    value: isSelected,
+                                    onChanged: (value) => _toggleUserSelection(userId),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
                                 // Avatar
                                 CircleAvatar(
                                   radius: 24,

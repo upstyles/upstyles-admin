@@ -25,6 +25,16 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
     _loadPosts();
   }
 
+  void _toggleSelectAll() {
+    setState(() {
+      if (_selectedPosts.length == _posts.length) {
+        _selectedPosts.clear();
+      } else {
+        _selectedPosts = _posts.map((p) => p['id'].toString()).toSet();
+      }
+    });
+  }
+
   Future<void> _loadPosts() async {
     setState(() => _loading = true);
     try {
@@ -204,6 +214,13 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
                 )
               : null,
           actions: [
+            if (_batchMode) ...[
+              TextButton.icon(
+                onPressed: _toggleSelectAll,
+                icon: Icon(_selectedPosts.length == _posts.length ? Icons.deselect : Icons.select_all, size: 18),
+                label: Text(_selectedPosts.length == _posts.length ? 'Deselect All' : 'Select All'),
+              ),
+            ],
             if (_batchMode && _selectedPosts.isNotEmpty) ...[
               FilledButton.icon(
                 onPressed: _batchHidePosts,

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../submissions/explore_submissions_tab.dart';
 import '../analytics/analytics_tab.dart';
+import '../analytics/costs_tab.dart';
 import '../users/users_moderation_tab.dart';
 import '../posts/posts_moderation_tab.dart';
 import '../reports/reports_moderation_tab.dart';
@@ -26,6 +27,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     UsersModerationTab(),
     PostsModerationTab(),
     ReportsModerationTab(),
+    CostsTab(),
     AnalyticsTab(),
     AuditLogTab(),
   ];
@@ -132,6 +134,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icon(Icons.flag_outlined),
                 selectedIcon: Icon(Icons.flag),
                 label: Text('Reports'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.attach_money_outlined),
+                selectedIcon: Icon(Icons.attach_money),
+                label: Text('Costs'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.analytics_outlined),

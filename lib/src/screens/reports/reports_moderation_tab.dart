@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/moderation_api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/admin_components.dart';
 
 class ReportsModerationTab extends StatefulWidget {
   const ReportsModerationTab({super.key});
@@ -115,9 +116,9 @@ class _ReportsModerationTabState extends State<ReportsModerationTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Header with filters
+        // Header with filters (normalized)
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             border: Border(
@@ -131,6 +132,17 @@ class _ReportsModerationTabState extends State<ReportsModerationTab> {
             children: [
               const Text('Reports', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
               const Spacer(),
+              // Collapsible search helps maximize real-estate on mobile
+              Flexible(
+                flex: 0,
+                child: CollapsibleSearchBar(
+                  onSearch: (q) {
+                    // currently UI-only; future: pass `q` to API / client-side filter
+                    // store locally if needed
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
               SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(value: 'pending', label: Text('Pending')),
@@ -143,7 +155,7 @@ class _ReportsModerationTabState extends State<ReportsModerationTab> {
                   _loadReports();
                 },
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: _loadReports,

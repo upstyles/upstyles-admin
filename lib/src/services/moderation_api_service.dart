@@ -11,11 +11,19 @@ class ModerationApiService {
   ModerationApiService({http.Client? httpClient, FirebaseAuth? auth})
       : _http = httpClient ?? http.Client(),
         _auth = auth ?? FirebaseAuth.instance,
-        _baseUrl = _normalizeBaseUrl(moderationApiBaseUrl);
+        _baseUrl = _normalizeBaseUrl(moderationApiBaseUrl),
+        tokenProvider = null;
 
   final http.Client _http;
   final FirebaseAuth _auth;
   final String _baseUrl;
+  // Optional token provider for easier testing (returns a Firebase ID token)
+  final Future<String> Function()? tokenProvider;
+
+  ModerationApiService.withTokenProvider({http.Client? httpClient, this.tokenProvider})
+      : _http = httpClient ?? http.Client(),
+        _auth = FirebaseAuth.instance,
+        _baseUrl = _normalizeBaseUrl(moderationApiBaseUrl);
 
   static String _normalizeBaseUrl(String raw) {
     final trimmed = raw.trim();
@@ -26,6 +34,12 @@ class ModerationApiService {
   }
 
   Future<String> _requireToken() async {
+    if (tokenProvider != null) {
+      final t = await tokenProvider!();
+      if (t.isEmpty) throw StateError('Token provider returned empty token');
+      return t;
+    }
+
     final user = _auth.currentUser;
     if (user == null) {
       throw StateError('Authentication required for moderation API calls');

@@ -2,18 +2,27 @@ import 'package:flutter/material.dart';
 import '../../services/moderation_api_service.dart';
 import '../../widgets/admin_components.dart';
 import '../../theme/app_theme.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class CostsTab extends StatefulWidget {
-  const CostsTab({super.key});
+  // optional injected API client for testing
+  final ModerationApiService? api;
+  const CostsTab({Key? key, this.api}) : super(key: key);
 
   @override
   State<CostsTab> createState() => _CostsTabState();
 }
 
 class _CostsTabState extends State<CostsTab> {
-  final _api = ModerationApiService();
+  final _defaultApi = ModerationApiService();
   bool _loading = true;
   Map<String, dynamic> _stats = {};
+  final Map<String, bool> _toggles = {
+    'clientPreFilter': true,
+    'sampling': true,
+    'cache': true,
+    'budgetAlerts': true,
+  };
 
   @override
   void initState() {
@@ -24,8 +33,9 @@ class _CostsTabState extends State<CostsTab> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final monthly = await _api.getModerationMonthlyCost();
-      final statsResp = await _api.getModerationStats();
+      final apiClient = widget.api ?? _defaultApi;
+      final monthly = await apiClient.getModerationMonthlyCost();
+      final statsResp = await apiClient.getModerationStats();
 
       setState(() {
         _stats['monthly'] = monthly;
@@ -82,9 +92,12 @@ class _CostsTabState extends State<CostsTab> {
                       const SizedBox(height: 8),
                       _buildByDayList(),
                       const SizedBox(height: 24),
+                      // Alert banner when approaching threshold
+                      _buildAlertBanner(),
+                      const SizedBox(height: 12),
                       const Text('Recommendations', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 12),
-                      _buildRecommendations(),
+                      _buildToggleableRecommendations(),
                     ],
                   ),
                 ),
@@ -140,29 +153,115 @@ class _CostsTabState extends State<CostsTab> {
     );
   }
 
-  Widget _buildRecommendations() {
+  Widget _buildAlertBanner() {
+    final totalCost = (_stats['monthly']?['totalCost'] ?? 0).toDouble();
+    final threshold = (_stats['monthly']?['threshold'] ?? 100).toDouble();
+    if (threshold <= 0) return const SizedBox.shrink();
+    final pct = totalCost / threshold;
+    if (pct < 0.75) return const SizedBox.shrink();
+
+    final isCritical = pct >= 1.0;
+    final color = isCritical ? AppTheme.errorColor : Colors.orange;
+    final title = isCritical
+        ? 'Vision API cost exceeded threshold'
+        : 'Vision API cost approaching threshold';
+    final message = isCritical
+        ? 'Monthly cost (\$${totalCost.toStringAsFixed(2)}) exceeded threshold (\$${threshold.toStringAsFixed(2)}). Take action.'
+        : 'Monthly cost is at ${(pct * 100).toStringAsFixed(0)}% of threshold (\$${threshold.toStringAsFixed(2)}). Consider optimizations.';
+
     return AdminCard(
       padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          const Text('1. Enable client-side pre-filtering', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          const Text('Use a lightweight NSFW check (nsfwjs) before upload to avoid unnecessary Vision API calls.'),
-          const SizedBox(height: 12),
-          const Text('2. Sample images for multi-image submissions', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          const Text('For submissions with many images, check 1-2 representative images instead of all.'),
-          const SizedBox(height: 12),
-          const Text('3. Cache moderation results', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          const Text('Store results for images previously scanned to avoid duplicate calls.'),
-          const SizedBox(height: 12),
-          const Text('4. Set up budget alerts & monitoring', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          const Text('Use Cloud Billing budgets and the admin monthly cost endpoint to detect spikes.'),
+          Icon(isCritical ? Icons.error : Icons.warning, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+                const SizedBox(height: 4),
+                Text(message),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton.icon(
+            onPressed: () {
+              // Link to quick actions (setup guide)
+              launchUrlString('https://raw.githubusercontent.com/upstyles/explore-api/main/VISION_API_QUICKSTART.md');
+            },
+            icon: const Icon(Icons.launch),
+            label: const Text('View Guide'),
+            style: ElevatedButton.styleFrom(foregroundColor: Colors.white),
+          ),
         ],
       ),
     );
   }
+
+  Widget _buildToggleableRecommendations() {
+    // Helper to render a toggle row with optional link
+    Widget toggleRow({required String keyName, required String title, required String description, String? docUrl}) {
+      return AdminCard(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Text(description),
+                  if (docUrl != null) ...[
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => launchUrlString(docUrl),
+                      child: const Text('Open guide'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Switch(
+              value: _toggles[keyName] ?? false,
+              onChanged: (v) => setState(() => _toggles[keyName] = v),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        toggleRow(
+          keyName: 'clientPreFilter',
+          title: 'Client-side pre-filtering',
+          description: 'Run a lightweight NSFW check in the client to avoid needless server calls.',
+          docUrl: 'https://raw.githubusercontent.com/upstyles/explore-api/main/VISION_API_QUICKSTART.md',
+        ),
+        const SizedBox(height: 8),
+        toggleRow(
+          keyName: 'sampling',
+          title: 'Sampling for multi-image submissions',
+          description: 'Check 1–2 representative images rather than scanning all.',
+        ),
+        const SizedBox(height: 8),
+        toggleRow(
+          keyName: 'cache',
+          title: 'Cache moderation results',
+          description: 'Reuse previous results for identical images to reduce calls.',
+        ),
+        const SizedBox(height: 8),
+        toggleRow(
+          keyName: 'budgetAlerts',
+          title: 'Budget Alerts',
+          description: 'Enable Cloud Billing budgets and email notifications.',
+          docUrl: 'https://console.cloud.google.com/billing/budgets',
+        ),
+      ],
+    );
+  }
+
 }

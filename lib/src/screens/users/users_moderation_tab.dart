@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/moderation_api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/user_card_skeleton.dart';
+import '../../widgets/admin_components.dart';
 
 class UsersModerationTab extends StatefulWidget {
   const UsersModerationTab({super.key});
@@ -226,18 +227,12 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                     const SizedBox(width: 16),
                   ],
                   Expanded(
-                    child: TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Search users...',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                        isDense: true,
-                      ),
-                      onChanged: (value) {
-                        setState(() => _searchQuery = value.isEmpty ? null : value);
+                    child: CollapsibleSearchBar(
+                      initialValue: _searchQuery ?? '',
+                      onSearch: (q) {
+                        setState(() => _searchQuery = q.isEmpty ? null : q);
+                        _loadUsers();
                       },
-                      onSubmitted: (value) => _loadUsers(),
                     ),
                   ),
                   const SizedBox(width: 12),

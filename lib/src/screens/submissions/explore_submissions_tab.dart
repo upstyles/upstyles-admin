@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/moderation_api_service.dart';
 import '../../utils/logger.dart';
+import '../../widgets/admin_components.dart';
 import 'package:intl/intl.dart';
 
 class ExploreSubmissionsTab extends StatefulWidget {
@@ -519,6 +520,17 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
                 },
               ),
               const Spacer(),
+              // Collapsible search to maximize real-estate on mobile
+              CollapsibleSearchBar(
+                onSearch: (q) {
+                  // client-side filtering by title/author
+                  setState(() {
+                    // store query locally and filter client-side if desired
+                    // currently we reload from server when filters change
+                  });
+                },
+              ),
+              const SizedBox(width: 8),
               // View mode toggle
               SegmentedButton<String>(
                 segments: const [

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/moderation_api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/admin_components.dart';
 import '../../widgets/section_header.dart';
 
 class PostsModerationTab extends StatefulWidget {
@@ -20,12 +21,6 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
   String _viewMode = 'list'; // 'grid' or 'list'
   String _sortBy = 'recent'; // 'recent', 'likes', 'comments'
   String? _searchQuery;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPosts();
-  }
 
   void _toggleSelectAll() {
     setState(() {
@@ -80,8 +75,8 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
     }).toList();
   }
 
+  
   Future<void> _loadPosts() async {
-    setState(() => _loading = true);
     try {
       final posts = await _moderationApi.getPosts(flagged: _flaggedOnly ? true : null);
       if (mounted) {
@@ -264,22 +259,10 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
           ),
           child: Row(
             children: [
-              Expanded(
-                child: TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'Search posts by content or username...',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                    isDense: true,
-                  ),
-                  onChanged: (value) {
-                    setState(() => _searchQuery = value.isEmpty ? null : value);
-                  },
-                  onSubmitted: (value) {
-                    // Filter posts locally
-                    setState(() {});
-                  },
+              Flexible(
+                child: CollapsibleSearchBar(
+                  initialValue: _searchQuery ?? '',
+                  onSearch: (q) => setState(() => _searchQuery = q.isEmpty ? null : q),
                 ),
               ),
             ],

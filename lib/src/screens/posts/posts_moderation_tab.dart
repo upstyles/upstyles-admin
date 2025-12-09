@@ -508,7 +508,7 @@ class _PostCard extends StatelessWidget {
     final createdAt = _formatTimestamp(post['createdAt']);
     final fullDateTime = _formatFullDateTime(post['createdAt']);
 
-    return Card(
+    return AdminCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -769,12 +769,12 @@ class _PostListItem extends StatelessWidget {
     final likesCount = post['likesCount'] ?? 0;
     final commentsCount = post['commentsCount'] ?? 0;
     
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: batchMode ? onToggleSelect : onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: AdminCard(
+        padding: const EdgeInsets.all(16),
+        child: InkWell(
+          onTap: batchMode ? onToggleSelect : onTap,
           child: Row(
             children: [
               // Checkbox in batch mode

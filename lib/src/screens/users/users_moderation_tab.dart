@@ -397,11 +397,12 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                                 final userId = user['id']?.toString() ?? '';
                                 final isSelected = _selectedUserIds.contains(userId);
                                 
-                                return Card(
-                                  child: InkWell(
-                                    onTap: () => _showUserDetails(user),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
+                                return Padding(
+                                  padding: const EdgeInsets.all(0),
+                                  child: AdminCard(
+                                    padding: const EdgeInsets.all(16),
+                                    child: InkWell(
+                                      onTap: () => _showUserDetails(user),
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
@@ -494,12 +495,12 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                         final userId = user['id']?.toString() ?? '';
                         final isSelected = _selectedUserIds.contains(userId);
                         
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: InkWell(
-                            onTap: () => _showUserDetails(user),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: AdminCard(
+                            padding: const EdgeInsets.all(16),
+                            child: InkWell(
+                              onTap: () => _showUserDetails(user),
                               child: Row(
                               children: [
                                 // Checkbox (only in batch mode)
@@ -985,121 +986,113 @@ class _UserDetailViewState extends State<_UserDetailView> {
       debugPrint('[UserDetail] Photo URL: $photoUrl');
     }
     
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // Avatar
-            CircleAvatar(
-              radius: 60,
-              backgroundColor: AppTheme.primaryLight,
-              backgroundImage: photoUrl != null && photoUrl.isNotEmpty
-                  ? NetworkImage(photoUrl)
-                  : null,
-              onBackgroundImageError: photoUrl != null
-                  ? (exception, stackTrace) {
-                      debugPrint('[UserDetail] Error loading avatar: $exception');
-                    }
-                  : null,
-              child: photoUrl == null || photoUrl.isEmpty
-                  ? Text(
-                      username[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 16),
-            // Username
-            Text(
-              username,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            // Email
-            Text(
-              email,
-              style: TextStyle(fontSize: 14, color: Theme.of(context).textTheme.bodySmall?.color),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            // Status Badge
-            if (banned)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppTheme.errorColor,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Text(
-                  'BANNED',
-                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppTheme.successColor,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Text(
-                  'ACTIVE',
-                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 16),
-            // Signup Date
-            _buildInfoRow(Icons.calendar_today, 'Joined', createdAt),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.access_time, 'Last Active', _formatTimestamp(widget.user['last_login'] ?? widget.user['lastLogin'] ?? widget.user['updated_at'])),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.fingerprint, 'User ID', widget.user['id'] ?? 'Unknown'),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 16),
-            // Profile Link Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  final userId = widget.user['id'];
-                  if (userId != null) {
-                    // Open user profile by navigating to the home feed and searching for user
-                    // Since the main app doesn't have a public user profile route, 
-                    // we'll open the main app and they can search for the user
-                    final username = widget.user['username'] ?? '';
-                    final url = Uri.parse('https://upstyles-pro.web.app/');
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(url, mode: LaunchMode.externalApplication);
-                    }
-                    // Show a snackbar with the username to search for
-                    if (mounted && username.isNotEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Opening UpStyles. Search for: @$username'),
-                          duration: const Duration(seconds: 5),
-                        ),
-                      );
-                    }
+    return AdminCard(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          // Avatar
+          CircleAvatar(
+            radius: 60,
+            backgroundColor: AppTheme.primaryLight,
+            backgroundImage: photoUrl != null && photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+            onBackgroundImageError: photoUrl != null
+                ? (exception, stackTrace) {
+                    debugPrint('[UserDetail] Error loading avatar: $exception');
                   }
-                },
-                icon: const Icon(Icons.open_in_new, size: 18),
-                label: const Text('View on UpStyles'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
+                : null,
+            child: photoUrl == null || photoUrl.isEmpty
+                ? Text(
+                    username[0].toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(height: 16),
+          // Username
+          Text(
+            username,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          // Email
+          Text(
+            email,
+            style: TextStyle(fontSize: 14, color: Theme.of(context).textTheme.bodySmall?.color),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          // Status Badge
+          if (banned)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.errorColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Text(
+                'BANNED',
+                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.successColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Text(
+                'ACTIVE',
+                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
               ),
             ),
-          ],
-        ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 16),
+          // Signup Date
+          _buildInfoRow(Icons.calendar_today, 'Joined', createdAt),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.access_time, 'Last Active', _formatTimestamp(widget.user['last_login'] ?? widget.user['lastLogin'] ?? widget.user['updated_at'])),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.fingerprint, 'User ID', widget.user['id'] ?? 'Unknown'),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 16),
+          // Profile Link Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final userId = widget.user['id'];
+                if (userId != null) {
+                  final username = widget.user['username'] ?? '';
+                  final url = Uri.parse('https://upstyles-pro.web.app/');
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  }
+                  if (mounted && username.isNotEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Opening UpStyles. Search for: @$username'),
+                        duration: const Duration(seconds: 5),
+                      ),
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: const Text('View on UpStyles'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

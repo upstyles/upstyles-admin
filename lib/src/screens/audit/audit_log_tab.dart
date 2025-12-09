@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/moderation_api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/admin_components.dart';
 
 class AuditLogTab extends StatefulWidget {
   const AuditLogTab({super.key});
@@ -100,9 +101,9 @@ class _AuditLogTabState extends State<AuditLogTab> {
                       itemBuilder: (context, index) {
                         final log = _logs[index];
                         
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: Padding(
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: AdminCard(
                             padding: const EdgeInsets.all(16),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,

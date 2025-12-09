@@ -685,226 +685,227 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
   Widget _buildSubmissionCard(SubmissionItem submission) {
     final dateFormat = DateFormat('MMM d, yyyy • h:mm a');
     final isSelected = _selectedSubmissions.contains(submission.id);
-    
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      color: isSelected ? Colors.blue[50] : null,
-      child: ExpansionTile(
-        leading: _bulkMode
-            ? Checkbox(
-                value: isSelected,
-                onChanged: (value) {
-                  setState(() {
-                    if (value == true) {
-                      _selectedSubmissions.add(submission.id);
-                    } else {
-                      _selectedSubmissions.remove(submission.id);
-                    }
-                  });
-                },
-              )
-            : null,
-        title: Row(
-          children: [
-            Chip(
-              label: Text(submission.type.toUpperCase()),
-              backgroundColor: Colors.blue.shade100,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                submission.title,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: AdminCard(
+        padding: EdgeInsets.zero,
+        child: ExpansionTile(
+          leading: _bulkMode
+              ? Checkbox(
+                  value: isSelected,
+                  onChanged: (value) {
+                    setState(() {
+                      if (value == true) {
+                        _selectedSubmissions.add(submission.id);
+                      } else {
+                        _selectedSubmissions.remove(submission.id);
+                      }
+                    });
+                  },
+                )
+              : null,
+          title: Row(
+            children: [
+              Chip(
+                label: Text(submission.type.toUpperCase()),
+                backgroundColor: Colors.blue.shade100,
               ),
-            ),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text('By: ${submission.userId}'),
-            Text('Submitted: ${dateFormat.format(submission.submittedAt)}'),
-            if (submission.status == 'flagged')
-              const Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning, size: 16, color: Colors.orange),
-                    SizedBox(width: 4),
-                    Text(
-                      'FLAGGED FOR REVIEW',
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  submission.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
-          ],
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Images
-                if (submission.mediaUrls.isNotEmpty) ...[
-                  const Text(
-                    'Media:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 200,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: submission.mediaUrls.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              submission.mediaUrls[index],
-                              width: 200,
-                              height: 200,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stack) =>
-                                  Container(
-                                width: 200,
-                                height: 200,
-                                color: Colors.grey.shade300,
-                                child: const Icon(Icons.broken_image),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-
-                // Description
-                if (submission.description != null) ...[
-                  const Text(
-                    'Description:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(submission.description!),
-                  const SizedBox(height: 16),
-                ],
-
-                // Tags
-                const Text(
-                  'Tags:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: submission.tags.map((tag) {
-                    return Chip(
-                      label: Text(tag),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    );
-                  }).toList(),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Metadata
-                Row(
-                  children: [
-                    if (submission.difficulty != null)
-                      Chip(
-                        label: Text('Difficulty: ${submission.difficulty}'),
-                        backgroundColor: Colors.purple.shade100,
-                      ),
-                    if (submission.priceRange != null) ...[
-                      const SizedBox(width: 8),
-                      Chip(
-                        label: Text('Price: ${submission.priceRange}'),
-                        backgroundColor: Colors.green.shade100,
-                      ),
-                    ],
-                  ],
-                ),
-
-                if (submission.materials != null && submission.materials!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Materials:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(submission.materials!.join(', ')),
-                ],
-
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 8),
-
-                // Actions
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (submission.isPending || submission.isFlagged) ...[
-                      IconButton(
-                        onPressed: () => _deleteSubmission(submission),
-                        icon: const Icon(Icons.delete_outline, color: Colors.grey),
-                        tooltip: 'Delete',
-                      ),
-                      const SizedBox(width: 4),
-                      TextButton.icon(
-                        onPressed: () => _rejectSubmission(submission),
-                        icon: const Icon(Icons.close, color: Colors.red),
-                        label: const Text('REJECT'),
-                        style: TextButton.styleFrom(foregroundColor: Colors.red),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: () => _approveSubmission(submission),
-                        icon: const Icon(Icons.check),
-                        label: const Text('APPROVE'),
-                      ),
-                    ],
-                    if (submission.isRejected) ...[
-                      Expanded(
-                        child: Text(
-                          'Rejected: ${submission.rejectionReason ?? "No reason provided"}',
-                          style: const TextStyle(color: Colors.red),
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Text('By: ${submission.userId}'),
+              Text('Submitted: ${dateFormat.format(submission.submittedAt)}'),
+              if (submission.status == 'flagged')
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning, size: 16, color: Colors.orange),
+                      SizedBox(width: 4),
+                      Text(
+                        'FLAGGED FOR REVIEW',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      IconButton(
-                        onPressed: () => _deleteSubmission(submission),
-                        icon: const Icon(Icons.delete_outline, color: Colors.grey),
-                        tooltip: 'Delete',
-                      ),
                     ],
-                    if (submission.isApproved) ...[
-                      const Text(
-                        'Approved',
-                        style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: () => _deleteSubmission(submission),
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
-                        tooltip: 'Delete Approved Entry',
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
-              ],
-            ),
+            ],
           ),
-        ],
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Images
+                  if (submission.mediaUrls.isNotEmpty) ...[
+                    const Text(
+                      'Media:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 200,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: submission.mediaUrls.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                submission.mediaUrls[index],
+                                width: 200,
+                                height: 200,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stack) => Container(
+                                  width: 200,
+                                  height: 200,
+                                  color: Colors.grey.shade300,
+                                  child: const Icon(Icons.broken_image),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Description
+                  if (submission.description != null) ...[
+                    const Text(
+                      'Description:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(submission.description!),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Tags
+                  const Text(
+                    'Tags:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: submission.tags.map((tag) {
+                      return Chip(
+                        label: Text(tag),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Metadata
+                  Row(
+                    children: [
+                      if (submission.difficulty != null)
+                        Chip(
+                          label: Text('Difficulty: ${submission.difficulty}'),
+                          backgroundColor: Colors.purple.shade100,
+                        ),
+                      if (submission.priceRange != null) ...[
+                        const SizedBox(width: 8),
+                        Chip(
+                          label: Text('Price: ${submission.priceRange}'),
+                          backgroundColor: Colors.green.shade100,
+                        ),
+                      ],
+                    ],
+                  ),
+
+                  if (submission.materials != null && submission.materials!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Materials:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(submission.materials!.join(', ')),
+                  ],
+
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+
+                  // Actions
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (submission.isPending || submission.isFlagged) ...[
+                        IconButton(
+                          onPressed: () => _deleteSubmission(submission),
+                          icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                          tooltip: 'Delete',
+                        ),
+                        const SizedBox(width: 4),
+                        TextButton.icon(
+                          onPressed: () => _rejectSubmission(submission),
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          label: const Text('REJECT'),
+                          style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () => _approveSubmission(submission),
+                          icon: const Icon(Icons.check),
+                          label: const Text('APPROVE'),
+                        ),
+                      ],
+                      if (submission.isRejected) ...[
+                        Expanded(
+                          child: Text(
+                            'Rejected: ${submission.rejectionReason ?? "No reason provided"}',
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => _deleteSubmission(submission),
+                          icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                          tooltip: 'Delete',
+                        ),
+                      ],
+                      if (submission.isApproved) ...[
+                        const Text(
+                          'Approved',
+                          style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: () => _deleteSubmission(submission),
+                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          tooltip: 'Delete Approved Entry',
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

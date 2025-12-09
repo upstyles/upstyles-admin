@@ -178,9 +178,9 @@ class _ReportsModerationTabState extends State<ReportsModerationTab> {
                         final report = _reports[index];
                         final status = report['status'] ?? 'pending';
                         
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: Padding(
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: AdminCard(
                             padding: const EdgeInsets.all(16),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,

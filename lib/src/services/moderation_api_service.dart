@@ -338,6 +338,31 @@ class ModerationApiService {
     throw Exception('Failed to fetch reports');
   }
 
+  // COST / MODERATION STATS
+  Future<Map<String, dynamic>> getModerationStats({DateTime? startDate, DateTime? endDate}) async {
+    final queryParams = <String, String>{};
+    if (startDate != null) queryParams['startDate'] = startDate.toIso8601String();
+    if (endDate != null) queryParams['endDate'] = endDate.toIso8601String();
+
+    final url = Uri.parse('$_baseUrl/api/admin/moderation/stats').replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+    final headers = await _headers();
+    final response = await _http.get(url, headers: headers);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch moderation stats: ${response.body}');
+  }
+
+  Future<Map<String, dynamic>> getModerationMonthlyCost() async {
+    final url = Uri.parse('$_baseUrl/api/admin/moderation/monthly-cost');
+    final headers = await _headers();
+    final response = await _http.get(url, headers: headers);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to fetch monthly cost: ${response.body}');
+  }
+
   Future<void> resolveReport({required String reportId, required String action, String? notes}) async {
     final url = Uri.parse('$_baseUrl/api/moderation/reports/$reportId/resolve');
     final headers = await _headers();

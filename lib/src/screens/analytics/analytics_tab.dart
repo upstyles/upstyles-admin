@@ -46,10 +46,17 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
             'totalActions': totalActions,
             'banActions': banActions,
             'hideActions': hideActions,
+            // moderation cost placeholders
+            'visionTotalCost': 0.0,
+            'visionTotalImages': 0,
+            'visionAvgCostPerImage': 0.0,
+            'visionByDay': {},
           };
           _loading = false;
         });
       }
+      // Fetch moderation cost stats separately (don't block UI)
+      _loadModerationCostStats();
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
@@ -57,6 +64,25 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
           SnackBar(content: Text('Error loading stats: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _loadModerationCostStats() async {
+    try {
+      final monthly = await _moderationApi.getModerationMonthlyCost();
+      final statsResp = await _moderationApi.getModerationStats();
+      if (mounted) {
+        setState(() {
+          _stats['visionTotalCost'] = (monthly['totalCost'] ?? 0).toDouble();
+          _stats['visionTotalImages'] = monthly['totalImages'] ?? 0;
+          _stats['visionAvgCostPerImage'] = monthly['averageCostPerImage'] ?? 0.0;
+          final byDay = (statsResp['stats'] != null ? statsResp['stats']['byDay'] : statsResp['byDay']) ?? {};
+          _stats['visionByDay'] = byDay;
+        });
+      }
+    } catch (e) {
+      // non-fatal
+      debugPrint('Failed to load moderation cost stats: $e');
     }
   }
 
@@ -116,6 +142,21 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
                           Expanded(child: Container()),
                         ],
                       ),
+                      const SizedBox(height: 32),
+                      const Text('Moderation Costs (Vision API)', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(child: _buildStatCard('This Month Cost', '\$${(_stats['visionTotalCost'] ?? 0).toStringAsFixed(2)}', Icons.monetization_on, AppTheme.infoColor)),
+                          const SizedBox(width: 16),
+                          Expanded(child: _buildStatCard('Images Processed', '${_stats['visionTotalImages'] ?? 0}', Icons.image, AppTheme.primaryColor)),
+                          const SizedBox(width: 16),
+                          Expanded(child: _buildStatCard('Avg Cost / Image', '\$${(_stats['visionAvgCostPerImage'] ?? 0).toStringAsFixed(4)}', Icons.pie_chart, AppTheme.successColor)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
+                      _buildByDayList(),
                     ],
                   ),
                 ),
@@ -135,6 +176,47 @@ class _AnalyticsTabState extends State<AnalyticsTab> {
           Text(value, style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: color)),
           const SizedBox(height: 4),
           Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildByDayList() {
+    final byDay = _stats['visionByDay'] as Map<String, dynamic>? ?? {};
+    if (byDay.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Text('No moderation cost data available yet.'),
+      );
+    }
+
+    final entries = byDay.entries.toList()
+      ..sort((a, b) => b.key.compareTo(a.key));
+
+    return AdminCard(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Daily breakdown', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          ...entries.map((e) {
+            final date = e.key;
+            final obj = e.value as Map<String, dynamic>;
+            final images = obj['images'] ?? 0;
+            final cost = (obj['cost'] ?? 0).toDouble();
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(child: Text(date)),
+                  Text('$images imgs', style: const TextStyle(color: Colors.grey)),
+                  const SizedBox(width: 12),
+                  Text('\$${cost.toStringAsFixed(3)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+            );
+          }).toList(),
         ],
       ),
     );

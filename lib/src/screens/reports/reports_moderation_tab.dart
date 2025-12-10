@@ -132,16 +132,6 @@ class _ReportsModerationTabState extends State<ReportsModerationTab> {
             children: [
               const Text('Reports', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
               const Spacer(),
-              // Collapsible search helps maximize real-estate on mobile
-              Flexible(
-                flex: 0,
-                child: CollapsibleSearchBar(
-                  onSearch: (q) {
-                    // currently UI-only; future: pass `q` to API / client-side filter
-                    // store locally if needed
-                  },
-                ),
-              ),
               const SizedBox(width: 12),
               SegmentedButton<String>(
                 segments: const [
@@ -160,6 +150,20 @@ class _ReportsModerationTabState extends State<ReportsModerationTab> {
                 icon: const Icon(Icons.refresh),
                 onPressed: _loadReports,
                 tooltip: 'Refresh',
+              ),
+            ],
+          ),
+        ),
+        // Search placed on its own row for consistent layout
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              const Spacer(),
+              CollapsibleSearchBar(
+                onSearch: (q) {
+                  // currently UI-only; future: pass `q` to API / client-side filter
+                },
               ),
             ],
           ),
@@ -252,16 +256,17 @@ class _ReportsModerationTabState extends State<ReportsModerationTab> {
                                 
                                 if (status == 'pending') ...[
                                   const SizedBox(height: 16),
-                                  // Actions
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
+                                  // Actions — wrapped so buttons flow into multiple rows on narrow screens
+                                  Wrap(
+                                    alignment: WrapAlignment.end,
+                                    spacing: 8,
+                                    runSpacing: 8,
                                     children: [
                                       OutlinedButton.icon(
                                         onPressed: () => _resolveReport(report, 'dismissed'),
                                         icon: const Icon(Icons.close, size: 18),
                                         label: const Text('Dismiss'),
                                       ),
-                                      const SizedBox(width: 8),
                                       ElevatedButton.icon(
                                         onPressed: () => _resolveReport(report, 'actioned'),
                                         icon: const Icon(Icons.check, size: 18),

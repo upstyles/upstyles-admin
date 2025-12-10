@@ -209,6 +209,21 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
           ),
           child: Column(
             children: [
+              // Search on its own row for consistent layout
+              Row(
+                children: [
+                  Expanded(
+                    child: CollapsibleSearchBar(
+                      initialValue: _searchQuery ?? '',
+                      onSearch: (q) {
+                        setState(() => _searchQuery = q.isEmpty ? null : q);
+                        _loadUsers();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   // Select all checkbox (only in batch mode)
@@ -226,16 +241,6 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                     ),
                     const SizedBox(width: 16),
                   ],
-                  Expanded(
-                    child: CollapsibleSearchBar(
-                      initialValue: _searchQuery ?? '',
-                      onSearch: (q) {
-                        setState(() => _searchQuery = q.isEmpty ? null : q);
-                        _loadUsers();
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   // Batch mode toggle
                   OutlinedButton.icon(
                     onPressed: () {
@@ -332,37 +337,47 @@ class _UsersModerationTabState extends State<UsersModerationTab> {
                 bottom: BorderSide(color: Theme.of(context).dividerColor),
               ),
             ),
-            child: Row(
+            child: Column(
               children: [
-                Icon(Icons.info_outline, size: 20, color: AppTheme.primaryColor),
-                const SizedBox(width: 12),
-                Text(
-                  '${_selectedUserIds.length} user${_selectedUserIds.length != 1 ? 's' : ''} selected',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 20, color: AppTheme.primaryColor),
+                    const SizedBox(width: 12),
+                    Text(
+                      '${_selectedUserIds.length} user${_selectedUserIds.length != 1 ? 's' : ''} selected',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () => setState(() => _selectedUserIds.clear()),
+                      icon: const Icon(Icons.clear, size: 18),
+                      label: const Text('Clear'),
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () => setState(() => _selectedUserIds.clear()),
-                  icon: const Icon(Icons.clear, size: 18),
-                  label: const Text('Clear'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: _batchHide,
-                  icon: const Icon(Icons.visibility_off, size: 18),
-                  label: const Text('Hide'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.warningColor,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: _batchBan,
-                  icon: const Icon(Icons.block, size: 18),
-                  label: const Text('Ban'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.errorColor,
-                  ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _batchHide,
+                      icon: const Icon(Icons.visibility_off, size: 18),
+                      label: const Text('Hide'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.warningColor,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _batchBan,
+                      icon: const Icon(Icons.block, size: 18),
+                      label: const Text('Ban'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.errorColor,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

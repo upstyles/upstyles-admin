@@ -15,14 +15,14 @@ class ModerationApiService {
         tokenProvider = null;
 
   final http.Client _http;
-  final FirebaseAuth _auth;
+  final FirebaseAuth? _auth;
   final String _baseUrl;
   // Optional token provider for easier testing (returns a Firebase ID token)
   final Future<String> Function()? tokenProvider;
 
-  ModerationApiService.withTokenProvider({http.Client? httpClient, this.tokenProvider})
+  ModerationApiService.withTokenProvider({http.Client? httpClient, this.tokenProvider, FirebaseAuth? auth})
       : _http = httpClient ?? http.Client(),
-        _auth = FirebaseAuth.instance,
+        _auth = auth,
         _baseUrl = _normalizeBaseUrl(moderationApiBaseUrl);
 
   static String _normalizeBaseUrl(String raw) {
@@ -40,7 +40,7 @@ class ModerationApiService {
       return t;
     }
 
-    final user = _auth.currentUser;
+    final user = _auth?.currentUser;
     if (user == null) {
       throw StateError('Authentication required for moderation API calls');
     }

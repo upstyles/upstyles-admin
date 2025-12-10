@@ -520,16 +520,6 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
                 },
               ),
               const Spacer(),
-              // Collapsible search to maximize real-estate on mobile
-              CollapsibleSearchBar(
-                onSearch: (q) {
-                  // client-side filtering by title/author
-                  setState(() {
-                    // store query locally and filter client-side if desired
-                    // currently we reload from server when filters change
-                  });
-                },
-              ),
               const SizedBox(width: 8),
               // View mode toggle
               SegmentedButton<String>(
@@ -561,6 +551,20 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
             ],
           ),
         ),
+        // Search moved to its own row for consistent layout
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            children: [
+              const Spacer(),
+              CollapsibleSearchBar(
+                onSearch: (q) {
+                  // client-side filtering by title/author
+                },
+              ),
+            ],
+          ),
+        ),
         const Divider(height: 1),
         
         // Batch actions bar
@@ -568,54 +572,65 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
           Container(
             padding: const EdgeInsets.all(8),
             color: Colors.blue[50],
-            child: Row(
+            child: Column(
               children: [
-                Text('${_selectedSubmissions.length} selected'),
-                const SizedBox(width: 16),
-                if (_submissions.isNotEmpty)
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        if (_selectedSubmissions.length == _submissions.length) {
-                          _selectedSubmissions.clear();
-                        } else {
-                          _selectedSubmissions.addAll(_submissions.map((s) => s.id));
-                        }
-                      });
-                    },
-                    child: Text(_selectedSubmissions.length == _submissions.length 
-                        ? 'Deselect All' 
-                        : 'Select All'),
-                  ),
-                const Spacer(),
-                ElevatedButton.icon(
-                  onPressed: _batchApprove,
-                  icon: const Icon(Icons.check_circle),
-                  label: const Text('Approve'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                  ),
+                Row(
+                  children: [
+                    Text('${_selectedSubmissions.length} selected'),
+                    const SizedBox(width: 16),
+                    if (_submissions.isNotEmpty)
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            if (_selectedSubmissions.length == _submissions.length) {
+                              _selectedSubmissions.clear();
+                            } else {
+                              _selectedSubmissions.addAll(_submissions.map((s) => s.id));
+                            }
+                          });
+                        },
+                        child: Text(_selectedSubmissions.length == _submissions.length 
+                            ? 'Deselect All' 
+                            : 'Select All'),
+                      ),
+                    const Spacer(),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: _batchReject,
-                  icon: const Icon(Icons.cancel),
-                  label: const Text('Reject'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: _batchDelete,
-                  icon: const Icon(Icons.delete),
-                  label: const Text('Delete'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[700],
-                    foregroundColor: Colors.white,
-                  ),
+                const SizedBox(height: 8),
+                // Actions flow into multiple rows when needed
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _batchApprove,
+                      icon: const Icon(Icons.check_circle),
+                      label: const Text('Approve'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _batchReject,
+                      icon: const Icon(Icons.cancel),
+                      label: const Text('Reject'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _batchDelete,
+                      icon: const Icon(Icons.delete),
+                      label: const Text('Delete'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[700],
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

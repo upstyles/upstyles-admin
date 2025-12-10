@@ -14,7 +14,7 @@ class CostsTab extends StatefulWidget {
 }
 
 class _CostsTabState extends State<CostsTab> {
-  final _defaultApi = ModerationApiService();
+  ModerationApiService? _defaultApi;
   bool _loading = true;
   Map<String, dynamic> _stats = {};
   final Map<String, bool> _toggles = {
@@ -33,7 +33,7 @@ class _CostsTabState extends State<CostsTab> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final apiClient = widget.api ?? _defaultApi;
+      final apiClient = widget.api ?? (_defaultApi ??= ModerationApiService());
       final monthly = await apiClient.getModerationMonthlyCost();
       final statsResp = await apiClient.getModerationStats();
 

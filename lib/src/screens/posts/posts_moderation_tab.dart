@@ -1224,33 +1224,42 @@ class _PostDetailViewState extends State<_PostDetailView> {
               ),
             ],
           ),
-          child: Row(
-            children: [
-              if (!hidden)
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _processing ? null : _hidePost,
-                    icon: const Icon(Icons.visibility_off),
-                    label: const Text('Hide Post'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.warningColor,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 600;
+              final childWidth = isWide ? (constraints.maxWidth / 2) - 12 : double.infinity;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  if (!hidden)
+                    SizedBox(
+                      width: childWidth,
+                      child: ElevatedButton.icon(
+                        onPressed: _processing ? null : _hidePost,
+                        icon: const Icon(Icons.visibility_off),
+                        label: const Text('Hide Post'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.warningColor,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
+                  SizedBox(
+                    width: childWidth,
+                    child: ElevatedButton.icon(
+                      onPressed: _processing ? null : _deletePost,
+                      icon: const Icon(Icons.delete),
+                      label: const Text('Delete Post'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.errorColor,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
                     ),
                   ),
-                ),
-              if (!hidden) const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _processing ? null : _deletePost,
-                  icon: const Icon(Icons.delete),
-                  label: const Text('Delete Post'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.errorColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-            ],
+                ],
+              );
+            },
           ),
         ),
       ],

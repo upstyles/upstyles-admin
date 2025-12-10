@@ -31,9 +31,9 @@ class _CollapsibleSearchBarState extends State<CollapsibleSearchBar> {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final shouldCollapse = width <= 600;
-    if (!shouldCollapse) _expanded = true; // expand on larger screens
+    // Always default to collapsed; allow user to expand via icon
+    final shouldCollapse = true; // kept for readability
+    // Do not auto-expand — leave control to the user
 
     return Row(
       mainAxisSize: MainAxisSize.min,

@@ -28,6 +28,25 @@ class _CostsTabState extends State<CostsTab> {
   void initState() {
     super.initState();
     _load();
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    try {
+      final apiClient = widget.api ?? _defaultApi ?? ( _defaultApi = ModerationApiService());
+      final prefs = await apiClient.getAdminPrefs();
+      if (!mounted) return;
+      // Map persisted toggles into local toggles if present
+      setState(() {
+        _toggles['clientPreFilter'] = prefs['clientPreFilter'] ?? _toggles['clientPreFilter'];
+        _toggles['sampling'] = prefs['sampling'] ?? _toggles['sampling'];
+        _toggles['cache'] = prefs['cache'] ?? _toggles['cache'];
+        _toggles['budgetAlerts'] = prefs['budgetAlerts'] ?? _toggles['budgetAlerts'];
+      });
+    } catch (e) {
+      // ignore prefs load errors
+      debugPrint('[CostsTab] Failed to load prefs: $e');
+    }
   }
 
   Future<void> _load() async {
@@ -226,7 +245,10 @@ class _CostsTabState extends State<CostsTab> {
             ),
             Switch(
               value: _toggles[keyName] ?? false,
-              onChanged: (v) => setState(() => _toggles[keyName] = v),
+              onChanged: (v) async {
+                setState(() => _toggles[keyName] = v);
+                await _savePrefs();
+              },
             ),
           ],
         ),
@@ -262,6 +284,21 @@ class _CostsTabState extends State<CostsTab> {
         ),
       ],
     );
+  }
+
+  // Persist toggle state to admin prefs when changed
+  Future<void> _savePrefs() async {
+    try {
+      final apiClient = widget.api ?? _defaultApi ?? ( _defaultApi = ModerationApiService());
+      await apiClient.setAdminPrefs({
+        'clientPreFilter': _toggles['clientPreFilter'],
+        'sampling': _toggles['sampling'],
+        'cache': _toggles['cache'],
+        'budgetAlerts': _toggles['budgetAlerts'],
+      });
+    } catch (e) {
+      debugPrint('[CostsTab] Failed to save prefs: $e');
+    }
   }
 
 }

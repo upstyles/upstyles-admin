@@ -162,7 +162,11 @@ class _ReportsModerationTabState extends State<ReportsModerationTab> {
               const Spacer(),
               CollapsibleSearchBar(
                 onSearch: (q) {
-                  // currently UI-only; future: pass `q` to API / client-side filter
+                  // perform server-side filtering when search changes
+                  // For now reload reports if search is used (server currently ignores search but this keeps behaviour consistent)
+                  // TODO: wire server-side filtering in moderation-api reports route
+                  // (This triggers client-side reload to pick up new filters)
+                  _loadReports();
                 },
               ),
             ],

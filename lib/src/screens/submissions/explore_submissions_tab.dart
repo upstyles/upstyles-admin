@@ -559,7 +559,9 @@ class _ExploreSubmissionsTabState extends State<ExploreSubmissionsTab> {
               const Spacer(),
               CollapsibleSearchBar(
                 onSearch: (q) {
-                  // client-side filtering by title/author
+                  // perform server-side reload/search for submissions
+                  // For now, call _loadSubmissions which will apply server-side filters if implemented
+                  _loadSubmissions();
                 },
               ),
             ],

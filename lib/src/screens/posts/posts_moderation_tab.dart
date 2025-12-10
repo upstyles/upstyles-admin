@@ -78,7 +78,7 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
   
   Future<void> _loadPosts() async {
     try {
-      final posts = await _moderationApi.getPosts(flagged: _flaggedOnly ? true : null);
+      final posts = await _moderationApi.getPosts(flagged: _flaggedOnly ? true : null, search: _searchQuery, status: _sortBy == 'recent' ? null : null);
       if (mounted) {
         setState(() {
           _posts = posts;
@@ -262,7 +262,10 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
               Flexible(
                 child: CollapsibleSearchBar(
                   initialValue: _searchQuery ?? '',
-                  onSearch: (q) => setState(() => _searchQuery = q.isEmpty ? null : q),
+                  onSearch: (q) {
+                    setState(() => _searchQuery = q.isEmpty ? null : q);
+                    _loadPosts();
+                  },
                 ),
               ),
             ],
@@ -961,6 +964,33 @@ class _PostDetailView extends StatefulWidget {
 class _PostDetailViewState extends State<_PostDetailView> {
   final _moderationApi = ModerationApiService();
   bool _processing = false;
+  Map<String, dynamic>? _visionResult;
+
+  Future<void> _checkWithVision() async {
+    setState(() => _processing = true);
+    try {
+      final result = await _moderationApi.checkPostWithVision(postId: widget.post['id']);
+      if (mounted) {
+        setState(() {
+          _visionResult = result;
+          _processing = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Vision check complete: ${result['moderationResult']?['safe'] == true ? 'Safe' : 'Flagged'}'),
+            backgroundColor: result['moderationResult']?['safe'] == true ? AppTheme.successColor : AppTheme.warningColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _processing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Vision check failed: $e')),
+        );
+      }
+    }
+  }
 
   Future<void> _hidePost() async {
     final reason = await _showReasonDialog('Hide Post', 'Enter reason for hiding:');
@@ -1399,6 +1429,68 @@ class _PostDetailViewState extends State<_PostDetailView> {
           'Post ID: ${widget.post['id']}',
           style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color, fontFamily: 'monospace'),
         ),
+        
+        // Vision API Moderation Check
+        const SizedBox(height: 24),
+        const Divider(),
+        const SizedBox(height: 16),
+        const Text('Content Moderation', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _processing ? null : _checkWithVision,
+          icon: const Icon(Icons.visibility, size: 18),
+          label: const Text('Run Vision API Check'),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ),
+        if (_visionResult != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _visionResult!['moderationResult']?['safe'] == true ? Colors.green[50] : Colors.red[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _visionResult!['moderationResult']?['safe'] == true ? Colors.green[200]! : Colors.red[200]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      _visionResult!['moderationResult']?['safe'] == true ? Icons.check_circle : Icons.warning,
+                      size: 20,
+                      color: _visionResult!['moderationResult']?['safe'] == true ? Colors.green[700] : Colors.red[700],
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _visionResult!['moderationResult']?['safe'] == true ? 'Content Safe' : 'Content Flagged',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _visionResult!['moderationResult']?['safe'] == true ? Colors.green[900] : Colors.red[900],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Images processed: ${_visionResult!['moderationResult']?['imagesProcessed'] ?? 0}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                if (_visionResult!['moderationResult']?['reasons'] != null && 
+                    (_visionResult!['moderationResult']!['reasons'] as List).isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Reasons: ${(_visionResult!['moderationResult']!['reasons'] as List).join(', ')}',
+                    style: TextStyle(fontSize: 12, color: Colors.red[900]),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

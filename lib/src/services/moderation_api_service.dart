@@ -293,9 +293,11 @@ class ModerationApiService {
   }
 
   // POST MODERATION
-  Future<List<dynamic>> getPosts({bool? flagged}) async {
+  Future<List<dynamic>> getPosts({bool? flagged, String? search, String? status}) async {
     final url = Uri.parse('$_baseUrl/api/moderation/posts').replace(queryParameters: {
       if (flagged != null) 'flagged': flagged.toString(),
+      if (search != null && search.isNotEmpty) 'search': search,
+      if (status != null && status.isNotEmpty) 'status': status,
     });
     final headers = await _headers();
     final response = await _http.get(url, headers: headers);
@@ -304,6 +306,49 @@ class ModerationApiService {
       return data['posts'] as List;
     }
     throw Exception('Failed to fetch posts');
+  }
+
+  // Admin preferences (per-admin) persisted in Firestore via moderation-api
+  Future<Map<String, dynamic>> getAdminPrefs() async {
+    final url = Uri.parse('$_baseUrl/api/moderation/admin/prefs');
+    final headers = await _headers();
+    final response = await _http.get(url, headers: headers);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return data['prefs'] as Map<String, dynamic>? ?? {};
+    }
+    throw Exception('Failed to fetch admin prefs');
+  }
+
+  Future<void> setAdminPrefs(Map<String, dynamic> prefs) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/admin/prefs');
+    final headers = await _headers();
+    final response = await _http.put(url, headers: headers, body: jsonEncode({'prefs': prefs}));
+    if (response.statusCode != 200) {
+      throw Exception('Failed to save admin prefs');
+    }
+  }
+
+  // VISION API MODERATION
+  Future<Map<String, dynamic>> checkPostWithVision({required String postId}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/vision/check-post/$postId');
+    final headers = await _headers();
+    final response = await _http.post(url, headers: headers);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to check post with Vision API: ${response.body}');
+  }
+
+  Future<Map<String, dynamic>> checkMediaWithVision({required List<String> mediaUrls}) async {
+    final url = Uri.parse('$_baseUrl/api/moderation/vision/check-media');
+    final headers = await _headers();
+    final body = jsonEncode({'mediaUrls': mediaUrls});
+    final response = await _http.post(url, headers: headers, body: body);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception('Failed to check media with Vision API: ${response.body}');
   }
 
   Future<void> hidePost({required String postId, required String reason}) async {

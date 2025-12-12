@@ -22,6 +22,12 @@ class _PostsModerationTabState extends State<PostsModerationTab> {
   String _sortBy = 'recent'; // 'recent', 'likes', 'comments'
   String? _searchQuery;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadPosts();
+  }
+
   void _toggleSelectAll() {
     setState(() {
       if (_selectedPosts.length == _posts.length) {
